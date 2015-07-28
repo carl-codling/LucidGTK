@@ -335,10 +335,10 @@ class DreamWindow(Gtk.Window):
 
         filter_any = Gtk.FileFilter()
         filter_any.set_name("All images")
-        filter_GIF.add_mime_type("image/png")
-        filter_PNG.add_mime_type("image/gif")
-        filter_JPEG.add_mime_type("image/pjpeg")
-        filter_JPEG.add_mime_type("image/jpeg")
+        filter_any.add_mime_type("image/png")
+        filter_any.add_mime_type("image/gif")
+        filter_any.add_mime_type("image/pjpeg")
+        filter_any.add_mime_type("image/jpeg")
         dialog.add_filter(filter_any)
         
     def prepare_image(self):
