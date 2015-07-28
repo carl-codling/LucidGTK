@@ -7,7 +7,6 @@ import numpy as np
 import scipy.ndimage as nd
 import scipy.misc as sm
 import PIL.Image
-from IPython.display import clear_output, Image, display
 from google.protobuf import text_format
 
 import caffe
@@ -138,7 +137,6 @@ class DreamWindow(Gtk.Window):
                     vis = vis*(255.0/np.percentile(vis, 99.98))
                 self.showarray(vis)
                 self.set_info("Loop: "+str(self.loop+1)+" | Octave: "+str(octave+1)+" | Iter: "+str(i+1))
-                clear_output(wait=True)
                 while Gtk.events_pending():
                 	Gtk.main_iteration_do(True)
             # extract details produced on the current octave
