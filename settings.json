@@ -1,0 +1,7 @@
+{
+    "Max Image Bytes": "1000000",
+    "Model Path": "../caffe/models/bvlc_googlenet/",
+    "deploy.prototxt": "deploy.prototxt",
+    "caffemodel": "bvlc_googlenet.caffemodel",
+    "output layer": "inception_4c/output"
+}
