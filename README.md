@@ -9,6 +9,6 @@ Download the LucidGTK zip and unzip to your home dir
 
 Open a terminal and type:
 
-cd ~/LucidGTK__
+cd ~/LucidGTK <br />
 python dream.py
 
