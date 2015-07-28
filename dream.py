@@ -1,7 +1,6 @@
 #!/usr/bin/python
 from gi.repository import Gtk
 
-# imports and basic notebook setup
 from cStringIO import StringIO
 import numpy as np
 import scipy.ndimage as nd
@@ -49,16 +48,11 @@ class DreamWindow(Gtk.Window):
         self.set_border_width(10)
         self.grid = Gtk.Grid()
         self.add(self.grid)
-        
         self.do_top_bar()
-        
-        self.do_notif_bar()
-        
-        
-        self.set_image('DEFAULT.JPG')
-        
         self.do_info_bar()
+        self.set_image('DEFAULT.JPG')
         self.do_bottom_bar()
+        self.do_notif_bar()
         
     
     def check_im_size(self, pb):
@@ -163,7 +157,7 @@ class DreamWindow(Gtk.Window):
         self.notif = Gtk.Label("Ready")
         self.notif.set_markup('<span foreground="blue" size="larger">Ready</span>')
         self.notifBar.add(self.notif)
-        self.grid.attach_next_to(self.notifBar, self.topBar, Gtk.PositionType.BOTTOM, 1, 3)
+        self.grid.attach_next_to(self.notifBar, self.bottBar, Gtk.PositionType.BOTTOM, 1, 3)
         
         settingsBtn = Gtk.Button('Settings')
         settingsBtn.connect("clicked", self.on_settings_clicked)
@@ -173,9 +167,9 @@ class DreamWindow(Gtk.Window):
     
     def do_info_bar(self):
         self.infoBar = Gtk.Box(spacing=10)
-        self.infoLabel = Gtk.Label("tesssst")
+        self.infoLabel = Gtk.Label("")
         self.infoBar.add(self.infoLabel)
-        self.grid.attach_next_to(self.infoBar, self.scrollWin, Gtk.PositionType.BOTTOM, 1, 3)
+        self.grid.attach_next_to(self.infoBar, self.topBar, Gtk.PositionType.BOTTOM, 1, 3)
     
     def set_info(self, msg):
     	self.infoLabel.set_markup('<span color="green">'+msg+'</span>')
@@ -233,7 +227,7 @@ class DreamWindow(Gtk.Window):
     
     def do_bottom_bar(self):
     	self.bottBar = Gtk.Box()
-    	self.grid.attach_next_to(self.bottBar, self.infoBar, Gtk.PositionType.BOTTOM, 1, 3)
+    	self.grid.attach_next_to(self.bottBar, self.scrollWin, Gtk.PositionType.BOTTOM, 1, 3)
     	
     	label = Gtk.Label("Loops:")
         self.bottBar.add(label)
@@ -270,7 +264,7 @@ class DreamWindow(Gtk.Window):
         self.scrollWin.set_size_request(800,500)
         self.scrollWin.set_policy(Gtk.PolicyType.ALWAYS, Gtk.PolicyType.AUTOMATIC)
         
-        self.grid.attach_next_to(self.scrollWin, self.notifBar, Gtk.PositionType.BOTTOM, 1, 3)
+        self.grid.attach_next_to(self.scrollWin, self.infoBar, Gtk.PositionType.BOTTOM, 1, 3)
         
     	self.imagef = im
     	self.im = Gtk.Image()
