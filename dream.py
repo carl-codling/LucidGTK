@@ -36,7 +36,7 @@ class DreamWindow(Gtk.Window):
         self.add(self.grid)
         self.do_top_bar()
         self.do_info_bar()
-        self.set_image('DEFAULT.JPG')
+        self.set_image('.temp/temp.jpg')
         self.do_bottom_bar()
         self.do_notif_bar()
         
@@ -73,28 +73,17 @@ class DreamWindow(Gtk.Window):
         self.layer_combo.set_active(0)
         return self.layer_combo
     
-    def disable_buttons(self):
-        self.settingsBtn.set_sensitive(False)
-        self.fileBtn.set_sensitive(False)
-        self.dreamBtn.set_sensitive(False)
-        self.saveBtn.set_sensitive(False)
-        self.iterSpin.set_sensitive(False)
-        self.octaveSpin.set_sensitive(False)
-        self.scaleSpin.set_sensitive(False)
-        self.loopSpin.set_sensitive(False)
-        self.layer_combo.set_sensitive(False)
-        
     
-    def enable_buttons(self):
-        self.settingsBtn.set_sensitive(True)
-        self.fileBtn.set_sensitive(True)
-        self.dreamBtn.set_sensitive(True)
-        self.saveBtn.set_sensitive(True)
-        self.iterSpin.set_sensitive(True)
-        self.octaveSpin.set_sensitive(True)
-        self.scaleSpin.set_sensitive(True)
-        self.loopSpin.set_sensitive(True)
-        self.layer_combo.set_sensitive(True)
+    def enable_buttons(self, v=True):
+        self.settingsBtn.set_sensitive(v)
+        self.fileBtn.set_sensitive(v)
+        self.dreamBtn.set_sensitive(v)
+        self.saveBtn.set_sensitive(v)
+        self.iterSpin.set_sensitive(v)
+        self.octaveSpin.set_sensitive(v)
+        self.scaleSpin.set_sensitive(v)
+        self.loopSpin.set_sensitive(v)
+        self.layer_combo.set_sensitive(v)
     
     def check_im_size(self, pb):
 	    ch = pb.get_n_channels()
@@ -109,8 +98,8 @@ class DreamWindow(Gtk.Window):
 	            h = (float(h)*0.99)
 	            bytesize = float(ch) * w * h
 	        pbnew = pb.scale_simple(w, h, 3)
-	        pbnew.savev("temp.jpg","jpeg", ["quality"], ["80"])
-	        self.imagef = "temp.jpg"
+	        pbnew.savev(".temp/temp.jpg","jpeg", ["quality"], ["80"])
+	        self.imagef = ".temp/temp.jpg"
 	        return pbnew
 	    return pb
     
@@ -118,8 +107,8 @@ class DreamWindow(Gtk.Window):
         a = np.uint8(np.clip(a, 0, 255))
         f = StringIO()
         image = PIL.Image.fromarray(a)
-        image.save('temp.jpg')
-        self.reset_image('temp.jpg')
+        image.save('.temp/temp.jpg')
+        self.reset_image('.temp/temp.jpg')
     
     def make_step(self, net, step_size=1.5, jitter=32, clip=True, objective=objective_L2):
        
@@ -333,19 +322,20 @@ class DreamWindow(Gtk.Window):
     	self.im.set_from_pixbuf(pb)
         
     def save_image(self,a=0):
-    	image = PIL.Image.open('temp.jpg')
+    	image = PIL.Image.open('.temp/temp.jpg')
     	fCount = len([name for name in os.listdir('outputImages') if os.path.isfile(os.path.join('outputImages', name))])
     	imName = self.imageName.get_text()+'_'+str(fCount)+'.jpg'
     	image.save('outputImages/'+imName, optimize=True)
     	self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+imName+'</span></span>')
     
     def on_dream_clicked(self, button):
-        self.disable_buttons()
+        self.enable_buttons(False)
     	for i in xrange(int(self.loopSpin.get_value())):
     	    self.loop = i
             self.set_notif('<span foreground="white" background="red" weight="heavy">COMPUTER IS DREAMING. DO NOT DISTURB!...</span>')
             img = self.prepare_image()
-            self.deepdream(self.net, img)
+            outp = self.deepdream(self.net, img)
+            print type(outp)
         self.enable_buttons()
 
     
