@@ -73,6 +73,29 @@ class DreamWindow(Gtk.Window):
         self.layer_combo.set_active(0)
         return self.layer_combo
     
+    def disable_buttons(self):
+        self.settingsBtn.set_sensitive(False)
+        self.fileBtn.set_sensitive(False)
+        self.dreamBtn.set_sensitive(False)
+        self.saveBtn.set_sensitive(False)
+        self.iterSpin.set_sensitive(False)
+        self.octaveSpin.set_sensitive(False)
+        self.scaleSpin.set_sensitive(False)
+        self.loopSpin.set_sensitive(False)
+        self.layer_combo.set_sensitive(False)
+        
+    
+    def enable_buttons(self):
+        self.settingsBtn.set_sensitive(True)
+        self.fileBtn.set_sensitive(True)
+        self.dreamBtn.set_sensitive(True)
+        self.saveBtn.set_sensitive(True)
+        self.iterSpin.set_sensitive(True)
+        self.octaveSpin.set_sensitive(True)
+        self.scaleSpin.set_sensitive(True)
+        self.loopSpin.set_sensitive(True)
+        self.layer_combo.set_sensitive(True)
+    
     def check_im_size(self, pb):
 	    ch = pb.get_n_channels()
 	    w = pb.get_width()
@@ -182,11 +205,11 @@ class DreamWindow(Gtk.Window):
         self.notifBar.add(self.notif)
         self.grid.attach_next_to(self.notifBar, self.bottBar, Gtk.PositionType.BOTTOM, 1, 3)
         
-        settingsBtn = Gtk.Button('Settings')
-        settingsBtn.connect("clicked", self.on_settings_clicked)
-        settingsBtn.set_alignment(1,0)
-        self.notifBar.pack_start(settingsBtn, False, False, 0)
-        self.notifBar.set_child_packing(settingsBtn, False, True, 0, 1)
+        self.settingsBtn = Gtk.Button('Settings')
+        self.settingsBtn.connect("clicked", self.on_settings_clicked)
+        self.settingsBtn.set_alignment(1,0)
+        self.notifBar.pack_start(self.settingsBtn, False, False, 0)
+        self.notifBar.set_child_packing(self.settingsBtn, False, True, 0, 1)
     
     def do_info_bar(self):
         self.infoBar = Gtk.Box(spacing=10)
@@ -241,13 +264,13 @@ class DreamWindow(Gtk.Window):
         self.topBar.add(label)
         self.topBar.pack_start(self.make_layer_select(), False, False, True)
 
-        button2 = Gtk.Button("PHOTO")
-        button2.connect("clicked", self.on_fselect_clicked)
-        self.topBar.pack_start(button2, False, False, 0)
+        self.fileBtn = Gtk.Button("PHOTO")
+        self.fileBtn.connect("clicked", self.on_fselect_clicked)
+        self.topBar.pack_start(self.fileBtn, False, False, 0)
         
-        self.button1 = Gtk.Button('DREAM')
-        self.button1.connect("clicked", self.on_dream_clicked)
-        self.topBar.pack_start(self.button1, False, False, 0)
+        self.dreamBtn = Gtk.Button('DREAM')
+        self.dreamBtn.connect("clicked", self.on_dream_clicked)
+        self.topBar.pack_start(self.dreamBtn, False, False, 0)
         
         self.grid.attach(self.topBar,1,1,2,1)
         
@@ -317,11 +340,13 @@ class DreamWindow(Gtk.Window):
     	self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+imName+'</span></span>')
     
     def on_dream_clicked(self, button):
+        self.disable_buttons()
     	for i in xrange(int(self.loopSpin.get_value())):
     	    self.loop = i
             self.set_notif('<span foreground="white" background="red" weight="heavy">COMPUTER IS DREAMING. DO NOT DISTURB!...</span>')
             img = self.prepare_image()
             self.deepdream(self.net, img)
+        self.enable_buttons()
 
     
     def on_fselect_clicked(self, widget):
