@@ -56,8 +56,6 @@ class DreamWindow(Gtk.Window):
         
     
     def make_layer_select(self):
-        print 'BLOBS >>>>>>>>>>>>>>',list(self.net.blobs)
-        print 'LAYERS >>>>>>>>>>>>>>',list(self.net._layer_names)
         layer_store = Gtk.ListStore(str)
         l = list(self.net._layer_names)
         blobs = list(self.net.blobs)
