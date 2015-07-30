@@ -271,7 +271,7 @@ class DreamWindow(Gtk.Window):
     	
     	label = Gtk.Label("Loops:")
         self.bottBar.add(label)
-        adjustment = Gtk.Adjustment(1, 1, 10, 1, 0, 0)
+        adjustment = Gtk.Adjustment(1, 1, 50, 1, 0, 0)
         self.loopSpin = Gtk.SpinButton()
         self.loopSpin.set_adjustment(adjustment)
         self.loopSpin.set_value(1)
