@@ -4,10 +4,10 @@ from gi.repository import Gtk
 import json
 
 
-
 class SettingsWindow(Gtk.Window):
 
-    def __init__(self):
+    def __init__(self, mainWin):
+        self.mainWin = mainWin
         self.load_settings()
         Gtk.Window.__init__(self, title="DeepDreamsGTK Settings")
         self.settingWidgets = {}
@@ -18,7 +18,7 @@ class SettingsWindow(Gtk.Window):
         for key,item in self.settings.iteritems():
             self.build_item(key,item)
             
-        saveBtn = Gtk.Button("SAVE")
+        saveBtn = Gtk.Button("SAVE & RELOAD")
         saveBtn.connect("clicked", self.save_settings)
         self.settingsContainer.pack_start(saveBtn, False, False, 0)
         
@@ -47,4 +47,9 @@ class SettingsWindow(Gtk.Window):
             data[key] = item.get_text()
         with open('settings.json', 'w') as fp:
             json.dump(data, fp)
+        self.destroy()
+        self.mainWin.grid.destroy()
+        self.mainWin.__init__()
+        self.mainWin.show_all()
+	
         

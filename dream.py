@@ -9,6 +9,8 @@ import PIL.Image
 from google.protobuf import text_format
 
 import caffe
+from caffe.proto import caffe_pb2
+
 import os
 from os.path import basename
 
@@ -26,23 +28,7 @@ class DreamWindow(Gtk.Window):
 
     def __init__(self):
         self.init_settings()
-        
-        
-
-        model_path = str(self.settings['Model Path']) # substitute your path here
-        net_fn   = model_path + str(self.settings['deploy.prototxt'])
-        param_fn = model_path + str(self.settings['caffemodel'])
-        
-        # Patching model to be able to compute gradients.
-        # Note that you can also manually add "force_backward: true" line to "deploy.prototxt".
-        model = caffe.io.caffe_pb2.NetParameter()
-        text_format.Merge(open(net_fn).read(), model)
-        model.force_backward = True
-        open('tmp.prototxt', 'w').write(str(model))
-
-        self.net = caffe.Classifier('tmp.prototxt', param_fn,
-                               mean = np.float32([104.0, 116.0, 122.0]), # ImageNet mean, training set dependent
-                               channel_swap = (2,1,0)) # the reference model has channels in BGR order instead of RGB
+        self.initcaffe()
         
         Gtk.Window.__init__(self, title="Lucid - GTK Deep Dreamer")
         self.set_border_width(10)
@@ -54,25 +40,58 @@ class DreamWindow(Gtk.Window):
         self.do_bottom_bar()
         self.do_notif_bar()
         
+    def initcaffe(self):
+        model_path = str(self.settings['Model Path']) # substitute your path here
+        net_fn   = model_path + str(self.settings['deploy.prototxt'])
+        param_fn = model_path + str(self.settings['caffemodel'])
+        
+        # Patching model to be able to compute gradients.
+        # Note that you can also manually add "force_backward: true" line to "deploy.prototxt".
+        model = caffe.io.caffe_pb2.NetParameter()
+        text_format.Merge(open(net_fn).read(), model)
+        model.force_backward = True
+        open('tmp.prototxt', 'w').write(str(model))
+
+        self.net = caffe.Classifier('tmp.prototxt', param_fn, mean = np.float32([104.0, 116.0, 122.0]), channel_swap = (2,1,0))
+        
+    
+    def make_layer_select(self):
+        print 'BLOBS >>>>>>>>>>>>>>',list(self.net.blobs)
+        print 'LAYERS >>>>>>>>>>>>>>',list(self.net._layer_names)
+        layer_store = Gtk.ListStore(str)
+        l = list(self.net._layer_names)
+        blobs = list(self.net.blobs)
+        layers = [val for val in l if val in blobs]
+        #layers = list(set(l).intersection(blobs))
+        
+        for layer in layers:
+            layer_store.append([layer])
+
+        self.layer_combo = Gtk.ComboBox.new_with_model(layer_store)
+        #layer_combo.connect("changed", self.on_country_combo_changed)
+        renderer_text = Gtk.CellRendererText()
+        self.layer_combo.pack_start(renderer_text, True)
+        self.layer_combo.add_attribute(renderer_text, "text", 0)
+        self.layer_combo.set_active(0)
+        return self.layer_combo
     
     def check_im_size(self, pb):
-        ch = pb.get_n_channels()
-        w = pb.get_width()
-        h = pb.get_height()
-        bytesize = pb.get_byte_length()
-        limit = int(self.settings['Max Image Bytes'])
-        
-        if bytesize > limit:
-            
-            while bytesize > limit:
-                w = (float(w)*0.99)
-                h = (float(h)*0.99)
-                bytesize = float(ch) * w * h
-            pbnew = pb.scale_simple(w, h, 3)
-            pbnew.savev("temp.jpg","jpeg", ["quality"], ["80"])
-            self.imagef = "temp.jpg"
-            return pbnew
-        return pb
+	    ch = pb.get_n_channels()
+	    w = pb.get_width()
+	    h = pb.get_height()
+	    bytesize = pb.get_byte_length()
+	    limit = int(self.settings['Max Image Bytes'])
+	    
+	    if bytesize > limit:
+	        while bytesize > limit:
+	            w = (float(w)*0.99)
+	            h = (float(h)*0.99)
+	            bytesize = float(ch) * w * h
+	        pbnew = pb.scale_simple(w, h, 3)
+	        pbnew.savev("temp.jpg","jpeg", ["quality"], ["80"])
+	        self.imagef = "temp.jpg"
+	        return pbnew
+	    return pb
     
     def showarray(self, a, fmt='jpeg'):
         a = np.uint8(np.clip(a, 0, 255))
@@ -82,8 +101,14 @@ class DreamWindow(Gtk.Window):
         self.reset_image('temp.jpg')
     
     def make_step(self, net, step_size=1.5, jitter=32, clip=True, objective=objective_L2):
-        
-        end = self.settings['output layer']
+       
+        tree_iter = self.layer_combo.get_active_iter()
+        if tree_iter != None:
+            model = self.layer_combo.get_model()
+            end = model[tree_iter][0]
+        else:
+            raise Exception("No output layer is set!")
+            return
         
         src = net.blobs['data'] # input image is stored in Net's 'data' blob
         dst = net.blobs[end]
@@ -175,7 +200,7 @@ class DreamWindow(Gtk.Window):
     	self.infoLabel.set_markup('<span color="green">'+msg+'</span>')
        
     def on_settings_clicked(self,btn):
-        SettingsWindow()
+        SettingsWindow(self)
     
     def set_notif(self, msg):
     	self.notif.set_markup('<span size="larger">'+msg+'</span>')
@@ -213,6 +238,10 @@ class DreamWindow(Gtk.Window):
         self.scaleSpin.set_value(1.4)
         self.scaleSpin.set_numeric(1)
         self.topBar.pack_start(self.scaleSpin, False, False, 0)
+        
+        label = Gtk.Label("Layer:")
+        self.topBar.add(label)
+        self.topBar.pack_start(self.make_layer_select(), False, False, True)
 
         button2 = Gtk.Button("PHOTO")
         button2.connect("clicked", self.on_fselect_clicked)
@@ -223,6 +252,7 @@ class DreamWindow(Gtk.Window):
         self.topBar.pack_start(self.button1, False, False, 0)
         
         self.grid.attach(self.topBar,1,1,2,1)
+        
     
     
     def do_bottom_bar(self):
