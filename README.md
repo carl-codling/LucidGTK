@@ -1,9 +1,9 @@
 # LucidGTK
 GTK application for running Google's DeepDream software on Linux systems
 
-Much of the code is taken from Google's deepdream iPython notebook (https://github.com/google/deepdream) and repackaged in to a GTK application
+Much of the code is taken from Google's deepdream iPython notebook (https://github.com/google/deepdream) and repackaged in to a GTK application with the intention of making it simpler to experiment with the various settings (models, output layers, iterations, octaves. etc.)
 
-Install:
+## Install:
 
 First you will need to install caffe and other dependencies by following the instructions here: <br />
 https://www.reddit.com/r/deepdream/comments/3cd1yf/howto_install_on_ubuntulinux_mint_including_cuda/ <br />
@@ -16,4 +16,5 @@ Open a terminal and type:
 
 cd ~/LucidGTK-master <br />
 python dream.py
+
 
