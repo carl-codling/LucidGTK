@@ -87,6 +87,14 @@ class DreamWindow(Gtk.Window):
         self.loopSpin.set_sensitive(v)
         self.layer_combo.set_sensitive(v)
     
+    def get_shrink_dimensions(self, w, h, bytesize, limit, ch=3):
+        while bytesize > limit:
+            w = (float(w)*0.99)
+            h = (float(h)*0.99)
+            bytesize = float(ch) * w * h
+        return int(w), int(h)
+    
+    
     def check_im_size(self, pb):
 	    ch = pb.get_n_channels()
 	    w = pb.get_width()
@@ -95,10 +103,7 @@ class DreamWindow(Gtk.Window):
 	    limit = int(self.settings['Max Image Bytes'])
 	    
 	    if bytesize > limit:
-	        while bytesize > limit:
-	            w = (float(w)*0.99)
-	            h = (float(h)*0.99)
-	            bytesize = float(ch) * w * h
+	        w, h = self.get_shrink_dimensions(w, h, bytesize, limit, ch=ch)
 	        pbnew = pb.scale_simple(w, h, 3)
 	        pbnew.savev(".temp/temp.jpg","jpeg", ["quality"], ["80"])
 	        self.imagef = ".temp/temp.jpg"

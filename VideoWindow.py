@@ -88,8 +88,15 @@ class VideoWindow(Gtk.Window):
         self.hide()
         cap = cv2.VideoCapture(self.path)
         fourcc = cv2.cv.CV_FOURCC(*'XVID')
-        
-        out = cv2.VideoWriter(self.make_outp_name(),fourcc, cap.get(5), (int(cap.get(3)),int(cap.get(4))))
+        w = int(cap.get(3))
+        h = int(cap.get(4))
+        print w, h
+        bytesize = int(cap.get(3)) * int(cap.get(4)) * 3
+        limit = int(self.mainWin.settings['Max Image Bytes'])
+        (w, h) = self.mainWin.get_shrink_dimensions(w, h, bytesize, limit)
+        cap.set(3, w)
+        cap.set(4, h)
+        out = cv2.VideoWriter(self.make_outp_name(),fourcc, cap.get(5), (w,h))
         self.mainWin.loop = 0
         self.mainWin.enable_buttons(False)
         while(True):
@@ -102,6 +109,8 @@ class VideoWindow(Gtk.Window):
                 break
             
             src = PIL.Image.fromarray(frame)
+            size = w,h
+            src = src.resize(size, PIL.Image.ANTIALIAS)
             
             if self.mainWin.loop>0:
                 overl = PIL.Image.open('.temp/temp.jpg')
