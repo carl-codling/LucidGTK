@@ -20,6 +20,7 @@ from gi.repository.GdkPixbuf import Pixbuf
 import json
 
 from settingsWin import SettingsWindow
+from VideoWindow import VideoWindow
 
 def objective_L2(dst):
     dst.diff[:] = dst.data
@@ -77,6 +78,7 @@ class DreamWindow(Gtk.Window):
     def enable_buttons(self, v=True):
         self.settingsBtn.set_sensitive(v)
         self.fileBtn.set_sensitive(v)
+        self.vidBtn.set_sensitive(v)
         self.dreamBtn.set_sensitive(v)
         self.saveBtn.set_sensitive(v)
         self.iterSpin.set_sensitive(v)
@@ -103,12 +105,11 @@ class DreamWindow(Gtk.Window):
 	        return pbnew
 	    return pb
     
-    def showarray(self, a, fmt='jpeg'):
+    def showarray(self, a, fmt='jpeg', impath='.temp/temp.jpg'):
         a = np.uint8(np.clip(a, 0, 255))
-        f = StringIO()
         image = PIL.Image.fromarray(a)
-        image.save('.temp/temp.jpg')
-        self.reset_image('.temp/temp.jpg')
+        image.save(impath)
+        self.reset_image(impath)
     
     def make_step(self, net, step_size=1.5, jitter=32, clip=True, objective=objective_L2):
        
@@ -212,6 +213,10 @@ class DreamWindow(Gtk.Window):
     def on_settings_clicked(self,btn):
         SettingsWindow(self)
     
+    
+    def on_vidbtn_clicked(self,btn):
+        VideoWindow(self)
+    
     def set_notif(self, msg):
     	self.notif.set_markup('<span size="larger">'+msg+'</span>')
     
@@ -256,6 +261,10 @@ class DreamWindow(Gtk.Window):
         self.fileBtn = Gtk.Button("PHOTO")
         self.fileBtn.connect("clicked", self.on_fselect_clicked)
         self.topBar.pack_start(self.fileBtn, False, False, 0)
+        
+        self.vidBtn = Gtk.Button("VIDEO")
+        self.vidBtn.connect("clicked", self.on_vidbtn_clicked)
+        self.topBar.pack_start(self.vidBtn, False, False, 0)
         
         self.dreamBtn = Gtk.Button('DREAM')
         self.dreamBtn.connect("clicked", self.on_dream_clicked)
