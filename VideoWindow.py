@@ -6,6 +6,7 @@ import PIL.Image
 import numpy as np
 import os
 from os.path import basename
+import math
 
 class VideoWindow(Gtk.Window):
 
@@ -85,8 +86,10 @@ class VideoWindow(Gtk.Window):
         return 'videoOutput/'+str(fCount)+'_'+self.vidName.get_text()+'.avi'
     
     def dream(self,btn):
+        self.mainWin.mode = 'video'
         self.hide()
-        cap = cv2.VideoCapture(self.path)
+        self.cap = cv2.VideoCapture(self.path)
+        cap = self.cap
         fourcc = cv2.cv.CV_FOURCC(*'XVID')
         w = int(cap.get(3))
         h = int(cap.get(4))
@@ -96,7 +99,12 @@ class VideoWindow(Gtk.Window):
         (w, h) = self.mainWin.get_shrink_dimensions(w, h, bytesize, limit)
         cap.set(3, w)
         cap.set(4, h)
-        out = cv2.VideoWriter(self.make_outp_name(),fourcc, cap.get(5), (w,h))
+        fps = cap.get(5)
+        
+        # It seems that opencv can't read the fps on certain videos and return NaN. In this instance default to 30
+        if math.isnan(fps):
+            fps = 25
+        out = cv2.VideoWriter(self.make_outp_name(),fourcc, fps, (w,h))
         self.mainWin.loop = 0
         self.mainWin.enable_buttons(False)
         while(True):
@@ -133,7 +141,7 @@ class VideoWindow(Gtk.Window):
         out.release()
         cv2.destroyAllWindows()
         self.mainWin.enable_buttons()
-        self.mainWin.set_notif('<span foreground="blue">Ready</span>')
+        self.mainWin.set_notif('<span foreground="blue">Ready to dream. Counting electric sheep</span>')
 
 
 
