@@ -341,10 +341,20 @@ class DreamWindow(Gtk.Window):
         
     def save_image(self,a=0):
     	image = PIL.Image.open('.temp/temp.jpg')
-    	fCount = len([name for name in os.listdir('outputImages') if os.path.isfile(os.path.join('outputImages', name))])
-    	imName = self.imageName.get_text()+'_'+str(fCount)+'.jpg'
-    	image.save('outputImages/'+imName, optimize=True)
-    	self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+imName+'</span></span>')
+    	fp = self.make_new_fname()
+    	image.save(fp, optimize=True)
+    	self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+fp+'</span></span>')
+    
+    def make_new_fname(self):
+        fp = 'outputImages/'+self.imageName.get_text()+'.jpg'
+        if os.path.isfile(fp):
+            i = 0
+            while True:
+                fp = 'outputImages/'+self.imageName.get_text()+'_'+str(i)+'.jpg'
+                if os.path.isfile(fp)==False:
+                    break
+                i += 1
+        return fp
     
     def on_dream_clicked(self, button):
         self.mode = 'image'

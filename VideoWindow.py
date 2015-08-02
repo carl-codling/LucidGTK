@@ -81,9 +81,16 @@ class VideoWindow(Gtk.Window):
         filter_JPEG.add_mime_type("application/x-mpegURL")
         dialog.add_filter(filter_JPEG)
         
-    def make_outp_name(self):
-        fCount = len([name for name in os.listdir('videoOutput') if os.path.isfile(os.path.join('videoOutput', name))])
-        return 'videoOutput/'+str(fCount)+'_'+self.vidName.get_text()+'.avi'
+    def make_new_fname(self):
+        fp = 'videoOutput/'+self.vidName.get_text()+'.avi'
+        if os.path.isfile(fp):
+            i = 0
+            while True:
+                fp = 'videoOutput/'+self.vidName.get_text()+'_'+str(i)+'.avi'
+                if os.path.isfile(fp)==False:
+                    break
+                i += 1
+        return fp
     
     def dream(self,btn):
         self.mainWin.mode = 'video'
@@ -104,7 +111,7 @@ class VideoWindow(Gtk.Window):
         # It seems that opencv can't read the fps on certain videos and return NaN. In this instance default to 30
         if math.isnan(fps):
             fps = 25
-        out = cv2.VideoWriter(self.make_outp_name(),fourcc, fps, (w,h))
+        out = cv2.VideoWriter(self.make_new_fname(),fourcc, fps, (w,h))
         self.mainWin.loop = 0
         self.mainWin.enable_buttons(False)
         while(True):
