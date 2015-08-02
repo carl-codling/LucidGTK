@@ -25,6 +25,19 @@ class VideoWindow(Gtk.Window):
         self.vidName.set_text("myVideoName")
         self.vidContainer.pack_start(self.vidName, True, True, 0)
         
+        self.fpsBox = Gtk.VBox()
+        label = Gtk.Label("Frame rate:")
+        self.fpsBox.add(label)
+        self.fpsNotify = Gtk.Label("")
+        self.fpsBox.add(self.fpsNotify)
+        adjustment = Gtk.Adjustment(30, 5, 300, 1, 0, 0)
+        self.fpsSpin = Gtk.SpinButton()
+        self.fpsSpin.set_adjustment(adjustment)
+        self.fpsSpin.set_value(30)
+        self.fpsSpin.set_numeric(1)
+        self.fpsBox.pack_start(self.fpsSpin, False, False, 0)
+        self.vidContainer.pack_start(self.fpsBox, True, True, 0)
+        
         label = Gtk.Label("Continuity:")
         self.vidContainer.add(label)
         adjustment = Gtk.Adjustment(0.50, 0.05, 0.95, 0.01, 0, 0)
@@ -42,6 +55,7 @@ class VideoWindow(Gtk.Window):
         
         self.add(self.vidContainer)
         self.show_all()
+        self.fpsBox.hide()
 
     def select_video(self, btn):
         dialog = Gtk.FileChooserDialog("Please choose a video file", self,
@@ -53,8 +67,22 @@ class VideoWindow(Gtk.Window):
 
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
-        
+            
+            self.fpsBox.show()
+            
             self.path = dialog.get_filename()
+            
+            cap = cv2.VideoCapture(self.path)
+            fps = cap.get(5)
+        
+            # It seems that opencv can't read the fps on certain videos and return NaN. In this instance default to 30
+            if math.isnan(fps):
+                fps = 25
+                self.fpsNotify.set_markup('<span foreground="red" background="white" weight="light">!! Failed to retrieve frame rate from source !!</span>')
+                
+            cap.release()
+            
+            self.fpsSpin.set_value(fps)
             
             fname = basename(self.path)
             self.vidName.set_text(os.path.splitext(fname)[0])
@@ -106,11 +134,8 @@ class VideoWindow(Gtk.Window):
         (w, h) = self.mainWin.get_shrink_dimensions(w, h, bytesize, limit)
         cap.set(3, w)
         cap.set(4, h)
-        fps = cap.get(5)
+        fps = self.fpsSpin.get_value()
         
-        # It seems that opencv can't read the fps on certain videos and return NaN. In this instance default to 30
-        if math.isnan(fps):
-            fps = 25
         out = cv2.VideoWriter(self.make_new_fname(),fourcc, fps, (w,h))
         self.mainWin.loop = 0
         self.mainWin.enable_buttons(False)
