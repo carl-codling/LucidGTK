@@ -30,6 +30,7 @@ class DreamWindow(Gtk.Window):
     def __init__(self):
         self.init_settings()
         self.initcaffe()
+        self.mode = 'image'
         
         Gtk.Window.__init__(self, title="Lucid - GTK Deep Dreamer")
         self.set_border_width(10)
@@ -171,7 +172,10 @@ class DreamWindow(Gtk.Window):
                 if not clip: # adjust image contrast if clipping is disabled
                     vis = vis*(255.0/np.percentile(vis, 99.98))
                 self.showarray(vis)
-                self.set_info("Loop: "+str(self.loop+1)+" | Octave: "+str(octave+1)+" | Iter: "+str(i+1))
+                if self.mode is 'image':
+                    self.set_info("Loop: "+str(self.loop+1)+" | Octave: "+str(octave+1)+" | Iter: "+str(i+1))
+                elif self.mode is 'video':
+                    self.set_info("Frame: "+str(self.loop+1)+"/"+str(int(self.vidWin.cap.get(7)))+" | Octave: "+str(octave+1)+" | Iter: "+str(i+1))
                 while Gtk.events_pending():
                 	Gtk.main_iteration_do(True)
             # extract details produced on the current octave
@@ -181,7 +185,7 @@ class DreamWindow(Gtk.Window):
         if self.autoSaveBtn.get_active():
         	self.save_image()
         self.set_info("")
-        self.set_notif('<span foreground="blue">Ready</span>')
+        self.set_notif('<span foreground="blue">Ready to dream. Counting electric sheep</span>')
         return self.deprocess(net, src.data[0])
     
     # a couple of utility functions for converting to and from Caffe's input image layout
@@ -196,7 +200,7 @@ class DreamWindow(Gtk.Window):
         label.set_markup('<span size="larger">Status: </span>')
         self.notifBar.add(label)
         self.notif = Gtk.Label("Ready")
-        self.notif.set_markup('<span foreground="blue" size="larger">Ready</span>')
+        self.notif.set_markup('<span foreground="blue" size="larger">Ready to dream. Counting electric sheep</span>')
         self.notifBar.add(self.notif)
         self.grid.attach_next_to(self.notifBar, self.bottBar, Gtk.PositionType.BOTTOM, 1, 3)
         
@@ -220,7 +224,7 @@ class DreamWindow(Gtk.Window):
     
     
     def on_vidbtn_clicked(self,btn):
-        VideoWindow(self)
+        self.vidWin = VideoWindow(self)
     
     def set_notif(self, msg):
     	self.notif.set_markup('<span size="larger">'+msg+'</span>')
@@ -343,6 +347,7 @@ class DreamWindow(Gtk.Window):
     	self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+imName+'</span></span>')
     
     def on_dream_clicked(self, button):
+        self.mode = 'image'
         self.enable_buttons(False)
     	for i in xrange(int(self.loopSpin.get_value())):
     	    self.loop = i
