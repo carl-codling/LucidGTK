@@ -16,5 +16,6 @@ Much of the code is taken from Google's deepdream iPython notebook (https://gith
         make
         sudo make install
 
-
-
+        lucid-gtk
+        
+    Now you can use the lucid-gtk command in a terminal anytime you wish to start the application
