@@ -5,12 +5,12 @@ Much of the code is taken from Google's deepdream iPython notebook (https://gith
 
 ## Install:
 
-* You will need to have Caffe (http://caffe.berkeleyvision.org/) installed in order to use Lucid
+* NB. You will need to have Caffe (http://caffe.berkeleyvision.org/) installed in order to use Lucid
 
-    Download the latest release tarball from http://rebelweb.co.uk/lucid-gtk/
-    Unpack the tar.gz
-    Open a terminal and navigate to the unpacked folder
-    Enter the following commands and enter your password if prompted:
+    Download the latest release tarball from http://rebelweb.co.uk/lucid-gtk/<br />
+    Unpack the tar.gz<br />
+    Open a terminal and navigate to the unpacked folder<br />
+    Enter the following commands and enter your password if prompted:<br />
         
         ./configure
         make
