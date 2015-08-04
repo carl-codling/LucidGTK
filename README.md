@@ -5,16 +5,16 @@ Much of the code is taken from Google's deepdream iPython notebook (https://gith
 
 ## Install:
 
-First you will need to install caffe and other dependencies by following the instructions here: <br />
-https://www.reddit.com/r/deepdream/comments/3cd1yf/howto_install_on_ubuntulinux_mint_including_cuda/ <br />
-Or here:<br />
-http://googleresearch.blogspot.co.uk/2015/07/deepdream-code-example-for-visualizing.html
+* You will need to have Caffe (http://caffe.berkeleyvision.org/) installed in order to use Lucid
 
-Download the LucidGTK zip and unzip to your home dir
+    Download the latest release tarball from http://rebelweb.co.uk/lucid-gtk/
+    Unpack the tar.gz
+    Open a terminal and navigate to the unpacked folder
+    Enter the following commands and enter your password if prompted:
+        
+        ./configure
+        make
+        sudo make install
 
-Open a terminal and type:
-
-cd ~/LucidGTK-master <br />
-python dream.py
 
 

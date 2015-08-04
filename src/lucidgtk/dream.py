@@ -1,5 +1,20 @@
-#!/usr/bin/python
-from gi.repository import Gtk
+# 
+# Copyright (C) 2015 Carl Codling
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from gi.repository import Gtk, Gio, GLib
 
 from cStringIO import StringIO
 import numpy as np
@@ -16,36 +31,60 @@ from os.path import basename
 
 from gi.repository.GdkPixbuf import Pixbuf
 
-
 import json
 
-from settingsWin import SettingsWindow
-from VideoWindow import VideoWindow
+from lucidgtk.settingsWin import SettingsWindow
+from lucidgtk.VideoWindow import VideoWindow
 
 def objective_L2(dst):
     dst.diff[:] = dst.data
 
 class DreamWindow(Gtk.Window):
 
-    def __init__(self):
-        self.init_settings()
-        self.initcaffe()
-        self.mode = 'image'
+    def __init__(self, *args, **kwargs):
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
+            
+        self.settings = Gio.Settings('org.rebelweb.dreamer')
+        Gtk.Window.__init__(self, title='Lucid-GTK')
         
-        Gtk.Window.__init__(self, title="Lucid - GTK Deep Dreamer")
+        #self.set_title("%s v%s" % (self.package, self.version))
         self.set_border_width(10)
         self.grid = Gtk.Grid()
         self.add(self.grid)
+        
+        
+        if self.initcaffe() is False:
+            self.do_config_error('Caffe could not start. Please review the model and deploy file settings')
+            return
+        
+        if self.media_folders_set() is False:
+            self.do_config_error('Please set the locations for deepdream images and videos to be stored')
+            return
+                   
+        self.mode = 'image'
+        
+        
         self.do_top_bar()
         self.do_info_bar()
-        self.set_image('.temp/temp.jpg')
+        self.set_image('src/lucidgtk/.temp/temp.jpg')
         self.do_bottom_bar()
         self.do_notif_bar()
-        
+    
+    def media_folders_set(self):
+        if os.path.isdir(self.settings.get_string('im-dir')) and os.path.isdir(self.settings.get_string('vid-dir')):
+            return True
+        return False
+    
+    def do_config_error(self, msg):
+        label = Gtk.Label("")
+        label.set_markup('<span foreground="white" background="red" weight="heavy">CONFIGURATION ERROR: '+msg+'</span>')
+        self.grid.add(label)
+        SettingsWindow(self)
+       
     def initcaffe(self):
-        model_path = str(self.settings['Model Path']) # substitute your path here
-        net_fn   = model_path + str(self.settings['deploy.prototxt'])
-        param_fn = model_path + str(self.settings['caffemodel'])
+        net_fn   = str(self.settings.get_string('deploy-prototxt'))
+        param_fn = str(self.settings.get_string('model-file'))
         
         # Patching model to be able to compute gradients.
         # Note that you can also manually add "force_backward: true" line to "deploy.prototxt".
@@ -53,9 +92,13 @@ class DreamWindow(Gtk.Window):
         text_format.Merge(open(net_fn).read(), model)
         model.force_backward = True
         open('tmp.prototxt', 'w').write(str(model))
-
-        self.net = caffe.Classifier('tmp.prototxt', param_fn, mean = np.float32([104.0, 116.0, 122.0]), channel_swap = (2,1,0))
         
+        try:
+            self.net = caffe.Classifier('tmp.prototxt', param_fn, mean = np.float32([104.0, 116.0, 122.0]), channel_swap = (2,1,0))
+            return True
+        except:
+            print 'ERROR in caffe model config'
+            return False
     
     def make_layer_select(self):
         layer_store = Gtk.ListStore(str)
@@ -101,17 +144,17 @@ class DreamWindow(Gtk.Window):
 	    w = pb.get_width()
 	    h = pb.get_height()
 	    bytesize = pb.get_byte_length()
-	    limit = int(self.settings['Max Image Bytes'])
+	    limit = int(self.settings.get_int('max-bytes'))
 	    
 	    if bytesize > limit:
 	        w, h = self.get_shrink_dimensions(w, h, bytesize, limit, ch=ch)
 	        pbnew = pb.scale_simple(w, h, 3)
-	        pbnew.savev(".temp/temp.jpg","jpeg", ["quality"], ["80"])
-	        self.imagef = ".temp/temp.jpg"
+	        pbnew.savev("src/lucidgtk/.temp/temp.jpg","jpeg", ["quality"], ["80"])
+	        self.imagef = "src/lucidgtk/.temp/temp.jpg"
 	        return pbnew
 	    return pb
     
-    def showarray(self, a, fmt='jpeg', impath='.temp/temp.jpg'):
+    def showarray(self, a, fmt='jpeg', impath='src/lucidgtk/.temp/temp.jpg'):
         a = np.uint8(np.clip(a, 0, 255))
         image = PIL.Image.fromarray(a)
         image.save(impath)
@@ -232,35 +275,41 @@ class DreamWindow(Gtk.Window):
     def do_top_bar(self):
     	self.topBar = Gtk.Box()
         logo = Gtk.Image()
-        pb = Pixbuf.new_from_file('lucid.png')
+        pb = Pixbuf.new_from_file('src/lucidgtk/lucid-logo.png')
         logo.set_from_pixbuf(pb)
         self.topBar.pack_start(logo, False, False, 0)
         
+        iter_val = self.settings.get_int('n-iterations')
         label = Gtk.Label("Iterations:")
         self.topBar.add(label)
-        adjustment = Gtk.Adjustment(7, 1, 37, 1, 10, 0)
+        adjustment = Gtk.Adjustment(iter_val, 1, 37, 1, 10, 0)
         self.iterSpin = Gtk.SpinButton()
         self.iterSpin.set_adjustment(adjustment)
-        self.iterSpin.set_value(7)
+        self.iterSpin.set_value(iter_val)
         self.iterSpin.set_numeric(1)
+        self.iterSpin.connect("value-changed", self.set_iter_val)
         self.topBar.pack_start(self.iterSpin, False, False, 0)
         
+        octv_val = self.settings.get_int('n-octaves')
         label = Gtk.Label("Octaves:")
         self.topBar.add(label)
-        adjustment = Gtk.Adjustment(3, 1, 23, 1, 0, 0)
+        adjustment = Gtk.Adjustment(octv_val, 1, 23, 1, 0, 0)
         self.octaveSpin = Gtk.SpinButton()
         self.octaveSpin.set_adjustment(adjustment)
-        self.octaveSpin.set_value(3)
+        self.octaveSpin.set_value(octv_val)
         self.octaveSpin.set_numeric(1)
+        self.octaveSpin.connect("value-changed", self.set_octv_val)
         self.topBar.pack_start(self.octaveSpin, False, False, 0)
         
+        octv_scale = self.settings.get_double('octave-scale')
         label = Gtk.Label("Scale:")
         self.topBar.add(label)
-        adjustment = Gtk.Adjustment(1.4, 1.00, 1.90, 0.1, 0, 0)
+        adjustment = Gtk.Adjustment(octv_scale, 1.00, 1.90, 0.1, 0, 0)
         self.scaleSpin = Gtk.SpinButton()
         self.scaleSpin.configure(adjustment,0.01,2)
-        self.scaleSpin.set_value(1.4)
+        self.scaleSpin.set_value(octv_scale)
         self.scaleSpin.set_numeric(1)
+        self.scaleSpin.connect("value-changed", self.set_scale_val)
         self.topBar.pack_start(self.scaleSpin, False, False, 0)
         
         label = Gtk.Label("Layer:")
@@ -281,24 +330,41 @@ class DreamWindow(Gtk.Window):
         
         self.grid.attach(self.topBar,1,1,2,1)
         
+    def set_octv_val(self, btn):
+        self.settings.set_int('n-octaves',btn.get_value())
     
+    def set_iter_val(self, btn):
+        self.settings.set_int('n-iterations',btn.get_value())
+    
+    def set_scale_val(self, btn):
+        self.settings.set_double('octave-scale',btn.get_value())
+    
+    def set_loops_val(self, btn):
+        self.settings.set_int('n-loops',btn.get_value())
+        
+    def set_autosave(self, btn):
+        self.settings.set_boolean('auto-save',self.autoSaveBtn.get_active())
     
     def do_bottom_bar(self):
     	self.bottBar = Gtk.Box()
     	self.grid.attach_next_to(self.bottBar, self.scrollWin, Gtk.PositionType.BOTTOM, 1, 3)
     	
+    	nloops = self.settings.get_int('n-loops')
     	label = Gtk.Label("Loops:")
         self.bottBar.add(label)
-        adjustment = Gtk.Adjustment(1, 1, 50, 1, 0, 0)
+        adjustment = Gtk.Adjustment(nloops, 1, 50, 1, 0, 0)
         self.loopSpin = Gtk.SpinButton()
         self.loopSpin.set_adjustment(adjustment)
-        self.loopSpin.set_value(1)
+        self.loopSpin.set_value(nloops)
         self.loopSpin.set_numeric(1)
+        self.loopSpin.connect("value-changed", self.set_loops_val)
         self.bottBar.pack_start(self.loopSpin, False, False, 0)
     	
     	label = Gtk.Label("Auto Save:")
         self.bottBar.add(label)
         self.autoSaveBtn = Gtk.CheckButton()
+        self.autoSaveBtn.set_active(self.settings.get_boolean('auto-save'))
+        self.autoSaveBtn.connect("toggled", self.set_autosave)
         self.bottBar.pack_start(self.autoSaveBtn, False, False, 0)
         
         self.imageName = Gtk.Entry()
@@ -308,11 +374,6 @@ class DreamWindow(Gtk.Window):
     	self.saveBtn = Gtk.Button("SAVE")
         self.saveBtn.connect("clicked", self.save_image)
         self.bottBar.pack_start(self.saveBtn, False, False, 0)
-    
-    def init_settings(self):
-        with open('settings.json') as data_file:    
-            self.settings = json.load(data_file)
-    
     
     	
     def set_image(self, im):
@@ -340,17 +401,17 @@ class DreamWindow(Gtk.Window):
     	self.im.set_from_pixbuf(pb)
         
     def save_image(self,a=0):
-    	image = PIL.Image.open('.temp/temp.jpg')
+    	image = PIL.Image.open('src/lucidgtk/.temp/temp.jpg')
     	fp = self.make_new_fname()
     	image.save(fp, optimize=True)
     	self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+fp+'</span></span>')
     
     def make_new_fname(self):
-        fp = 'outputImages/'+self.imageName.get_text()+'.jpg'
+        fp = self.settings.get_string('im-dir')+'/'+self.imageName.get_text()+'.jpg'
         if os.path.isfile(fp):
             i = 0
             while True:
-                fp = 'outputImages/'+self.imageName.get_text()+'_'+str(i)+'.jpg'
+                fp = self.settings.get_string('im-dir')+'/'+self.imageName.get_text()+'_'+str(i)+'.jpg'
                 if os.path.isfile(fp)==False:
                     break
                 i += 1
@@ -382,7 +443,9 @@ class DreamWindow(Gtk.Window):
             pname = dialog.get_filename()
             self.reset_image(pname)
             fname = basename(pname)
-            self.imageName.set_text(os.path.splitext(fname)[0])
+            nm = os.path.splitext(fname)[0]
+            self.imageName.set_text(nm)
+            self.settings.set_string('im-name', nm)
         elif response == Gtk.ResponseType.CANCEL:
             print("Cancel clicked")
 

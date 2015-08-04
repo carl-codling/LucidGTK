@@ -1,0 +1,13 @@
+* You will need to have Caffe (http://caffe.berkeleyvision.org/) installed in order to use Lucid
+
+    Unpack the tar.gz
+    Open a terminal and navigate to the unpacked folder
+    Enter the following commands in the terminal and enter your password if prompted:
+        
+        ./configure
+        make
+        sudo make install
+        
+    To run Lucid-GTK simply use the following terminal command:
+
+        lucid-gtk

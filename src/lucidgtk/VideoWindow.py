@@ -1,5 +1,21 @@
-#!/usr/bin/python
-from gi.repository import Gtk
+# 
+# Copyright (C) 2015 Carl Codling
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+from gi.repository import Gtk, Gio, GLib
 
 import cv2
 import PIL.Image
@@ -12,6 +28,7 @@ class VideoWindow(Gtk.Window):
 
     def __init__(self, mainWin):
         self.mainWin = mainWin
+        self.settings = Gio.Settings('org.rebelweb.dreamer')
         Gtk.Window.__init__(self, title="DeepDreamsGTK Video Loader")
         self.set_border_width(10)
         
@@ -110,11 +127,11 @@ class VideoWindow(Gtk.Window):
         dialog.add_filter(filter_JPEG)
         
     def make_new_fname(self):
-        fp = 'videoOutput/'+self.vidName.get_text()+'.avi'
+        fp = self.settings.get_string('vid-dir')+'/'+self.vidName.get_text()+'.avi'
         if os.path.isfile(fp):
             i = 0
             while True:
-                fp = 'videoOutput/'+self.vidName.get_text()+'_'+str(i)+'.avi'
+                fp = self.settings.get_string('vid-dir')+'/'+self.vidName.get_text()+'_'+str(i)+'.avi'
                 if os.path.isfile(fp)==False:
                     break
                 i += 1
@@ -130,7 +147,7 @@ class VideoWindow(Gtk.Window):
         h = int(cap.get(4))
         print w, h
         bytesize = int(cap.get(3)) * int(cap.get(4)) * 3
-        limit = int(self.mainWin.settings['Max Image Bytes'])
+        limit = int(self.mainWin.settings.get_int('max-bytes'))
         (w, h) = self.mainWin.get_shrink_dimensions(w, h, bytesize, limit)
         cap.set(3, w)
         cap.set(4, h)
@@ -153,11 +170,11 @@ class VideoWindow(Gtk.Window):
             src = src.resize(size, PIL.Image.ANTIALIAS)
             
             if self.mainWin.loop>0:
-                overl = PIL.Image.open('.temp/temp.jpg')
+                overl = PIL.Image.open('src/lucidgtk/.temp/temp.jpg')
                 image = PIL.Image.blend(src, overl, self.continuitySpin.get_value())
             else:
                 image = src
-            imname = '.temp/temp.jpg'
+            imname = 'src/lucidgtk/.temp/temp.jpg'
             image.save(imname)
             self.mainWin.reset_image(imname)
                 
