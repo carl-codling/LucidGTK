@@ -47,6 +47,8 @@ class DreamWindow(Gtk.Window):
             
         self.settings = Gio.Settings('org.rebelweb.dreamer')
         Gtk.Window.__init__(self, title='Lucid-GTK')
+        self.set_icon_name('lucid-gtk')
+        self.iconify()
         
         #self.set_title("%s v%s" % (self.package, self.version))
         self.set_border_width(10)
@@ -67,7 +69,7 @@ class DreamWindow(Gtk.Window):
         
         self.do_top_bar()
         self.do_info_bar()
-        self.set_image('src/lucidgtk/.temp/temp.jpg')
+        self.set_image('.temp/temp.jpg')
         self.do_bottom_bar()
         self.do_notif_bar()
     
@@ -149,12 +151,12 @@ class DreamWindow(Gtk.Window):
 	    if bytesize > limit:
 	        w, h = self.get_shrink_dimensions(w, h, bytesize, limit, ch=ch)
 	        pbnew = pb.scale_simple(w, h, 3)
-	        pbnew.savev("src/lucidgtk/.temp/temp.jpg","jpeg", ["quality"], ["80"])
-	        self.imagef = "src/lucidgtk/.temp/temp.jpg"
+	        pbnew.savev(".temp/temp.jpg","jpeg", ["quality"], ["80"])
+	        self.imagef = ".temp/temp.jpg"
 	        return pbnew
 	    return pb
     
-    def showarray(self, a, fmt='jpeg', impath='src/lucidgtk/.temp/temp.jpg'):
+    def showarray(self, a, fmt='jpeg', impath='.temp/temp.jpg'):
         a = np.uint8(np.clip(a, 0, 255))
         image = PIL.Image.fromarray(a)
         image.save(impath)
@@ -274,10 +276,10 @@ class DreamWindow(Gtk.Window):
     
     def do_top_bar(self):
     	self.topBar = Gtk.Box()
-        logo = Gtk.Image()
-        pb = Pixbuf.new_from_file('src/lucidgtk/lucid-logo.png')
-        logo.set_from_pixbuf(pb)
-        self.topBar.pack_start(logo, False, False, 0)
+        #logo = Gtk.Image()
+        #pb = Pixbuf.new_from_file('src/lucidgtk/lucid-logo.png')
+        #logo.set_from_pixbuf(pb)
+        #self.topBar.pack_start(logo, False, False, 0)
         
         iter_val = self.settings.get_int('n-iterations')
         label = Gtk.Label("Iterations:")
@@ -401,7 +403,7 @@ class DreamWindow(Gtk.Window):
     	self.im.set_from_pixbuf(pb)
         
     def save_image(self,a=0):
-    	image = PIL.Image.open('src/lucidgtk/.temp/temp.jpg')
+    	image = PIL.Image.open('.temp/temp.jpg')
     	fp = self.make_new_fname()
     	image.save(fp, optimize=True)
     	self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+fp+'</span></span>')

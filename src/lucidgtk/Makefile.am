@@ -1,4 +1,3 @@
-SUBDIRS = .temp
 
 lucidgtk_PYTHON = \
 	dream.py \
@@ -8,7 +7,4 @@ lucidgtk_PYTHON = \
 
 lucidgtkdir = $(pythondir)/lucidgtk
 
-gsettings_SCHEMAS = org.rebelweb.dreamer.gschema.xml
-
-@GSETTINGS_RULES@
 
