@@ -97,6 +97,14 @@
       </description>
     </key>
     
+    <key name='rot-deg' type='d'>
+      <default>0.0</default>
+      <summary>Rotate degrees</summary>
+      <description>
+        How many degrees to rotate by on each loop. 
+      </description>
+    </key>
+    
     <key name='auto-save' type='b'>
       <default>true</default>
       <summary>Auto save images</summary>

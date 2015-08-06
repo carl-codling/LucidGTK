@@ -325,6 +325,17 @@ class DreamWindow(Gtk.Window):
         self.zoomSpin.connect("value-changed", self.set_zoom_val)
         self.topBar.pack_start(self.zoomSpin, False, False, 0)
         
+        deg_val = self.settings.get_double('rot-deg')
+        label = Gtk.Label("Rotation:")
+        self.topBar.add(label)
+        adjustment = Gtk.Adjustment(deg_val, 0.0, 10.0, 0.1, 0, 0)
+        self.degSpin = Gtk.SpinButton()
+        self.degSpin.configure(adjustment,0.1,1)
+        self.degSpin.set_value(deg_val)
+        self.degSpin.set_numeric(1)
+        self.degSpin.connect("value-changed", self.set_deg_val)
+        self.topBar.pack_start(self.degSpin, False, False, 0)
+        
         label = Gtk.Label("Layer:")
         self.topBar.add(label)
         self.topBar.pack_start(self.make_layer_select(), False, False, True)
@@ -345,6 +356,9 @@ class DreamWindow(Gtk.Window):
         
     def set_octv_val(self, btn):
         self.settings.set_int('n-octaves',btn.get_value())
+    
+    def set_deg_val(self, btn):
+        self.settings.set_double('rot-deg',btn.get_value())
         
     def set_zoom_val(self, btn):
         self.settings.set_double('zoom-scale',btn.get_value())
@@ -440,12 +454,17 @@ class DreamWindow(Gtk.Window):
     	    self.loop = i
             self.set_notif('<span foreground="white" background="red" weight="heavy">COMPUTER IS DREAMING. DO NOT DISTURB!...</span>')
             img = self.prepare_image()
+            
+            r = self.settings.get_double('rot-deg')
+            if r>0:
+                img = nd.interpolation.rotate(img, r, reshape=False)
+            
             z = self.settings.get_double('zoom-scale')
             if z>0:
                 h,w = img.shape[:2]
                 img = nd.affine_transform(img, [1-z,1-z,1], [h*z/2,w*z/2,0], order=1)
+            
             outp = self.deepdream(self.net, img)
-            print type(outp)
         self.enable_buttons()
 
     
