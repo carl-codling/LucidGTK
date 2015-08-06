@@ -328,9 +328,9 @@ class DreamWindow(Gtk.Window):
         deg_val = self.settings.get_double('rot-deg')
         label = Gtk.Label("Rotation:")
         self.topBar.add(label)
-        adjustment = Gtk.Adjustment(deg_val, 0.0, 10.0, 0.1, 0, 0)
+        adjustment = Gtk.Adjustment(deg_val, -10.00, 10.00, 0.10, 0, 0)
         self.degSpin = Gtk.SpinButton()
-        self.degSpin.configure(adjustment,0.1,1)
+        self.degSpin.configure(adjustment,0.10,2)
         self.degSpin.set_value(deg_val)
         self.degSpin.set_numeric(1)
         self.degSpin.connect("value-changed", self.set_deg_val)
@@ -382,7 +382,7 @@ class DreamWindow(Gtk.Window):
     	nloops = self.settings.get_int('n-loops')
     	label = Gtk.Label("Loops:")
         self.bottBar.add(label)
-        adjustment = Gtk.Adjustment(nloops, 1, 50, 1, 0, 0)
+        adjustment = Gtk.Adjustment(nloops, 1, 99999, 1, 0, 0)
         self.loopSpin = Gtk.SpinButton()
         self.loopSpin.set_adjustment(adjustment)
         self.loopSpin.set_value(nloops)
@@ -456,7 +456,7 @@ class DreamWindow(Gtk.Window):
             img = self.prepare_image()
             
             r = self.settings.get_double('rot-deg')
-            if r>0:
+            if r>0 or r<0:
                 img = nd.interpolation.rotate(img, r, reshape=False)
             
             z = self.settings.get_double('zoom-scale')
