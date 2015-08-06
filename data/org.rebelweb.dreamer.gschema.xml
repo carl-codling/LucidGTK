@@ -89,6 +89,14 @@
       </description>
     </key>
     
+    <key name='zoom-scale' type='d'>
+      <default>0.01</default>
+      <summary>Zoom scale</summary>
+      <description>
+        Scale to zoom in by on each loop. 
+      </description>
+    </key>
+    
     <key name='auto-save' type='b'>
       <default>true</default>
       <summary>Auto save images</summary>

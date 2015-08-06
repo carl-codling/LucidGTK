@@ -314,6 +314,17 @@ class DreamWindow(Gtk.Window):
         self.scaleSpin.connect("value-changed", self.set_scale_val)
         self.topBar.pack_start(self.scaleSpin, False, False, 0)
         
+        zoom_scale = self.settings.get_double('zoom-scale')
+        label = Gtk.Label("Zoom:")
+        self.topBar.add(label)
+        adjustment = Gtk.Adjustment(zoom_scale, 0.00, 0.10, 0.01, 0, 0)
+        self.zoomSpin = Gtk.SpinButton()
+        self.zoomSpin.configure(adjustment,0.01,2)
+        self.zoomSpin.set_value(zoom_scale)
+        self.zoomSpin.set_numeric(1)
+        self.zoomSpin.connect("value-changed", self.set_zoom_val)
+        self.topBar.pack_start(self.zoomSpin, False, False, 0)
+        
         label = Gtk.Label("Layer:")
         self.topBar.add(label)
         self.topBar.pack_start(self.make_layer_select(), False, False, True)
@@ -334,6 +345,9 @@ class DreamWindow(Gtk.Window):
         
     def set_octv_val(self, btn):
         self.settings.set_int('n-octaves',btn.get_value())
+        
+    def set_zoom_val(self, btn):
+        self.settings.set_double('zoom-scale',btn.get_value())
     
     def set_iter_val(self, btn):
         self.settings.set_int('n-iterations',btn.get_value())
@@ -426,6 +440,10 @@ class DreamWindow(Gtk.Window):
     	    self.loop = i
             self.set_notif('<span foreground="white" background="red" weight="heavy">COMPUTER IS DREAMING. DO NOT DISTURB!...</span>')
             img = self.prepare_image()
+            z = self.settings.get_double('zoom-scale')
+            if z>0:
+                h,w = img.shape[:2]
+                img = nd.affine_transform(img, [1-z,1-z,1], [h*z/2,w*z/2,0], order=1)
             outp = self.deepdream(self.net, img)
             print type(outp)
         self.enable_buttons()
