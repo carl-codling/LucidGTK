@@ -109,6 +109,7 @@ class SettingsWindow(Gtk.Window):
         self.settings.set_string('vid-dir',self.viddir.get_text())
         self.settings.set_string('deploy-prototxt',self.deploy.get_text())
         self.settings.set_string('model-file',self.modelf.get_text())
+        self.settings.set_int('max-bytes',self.maxbyt.get_value())
         self.destroy()
         self.mainWin.grid.destroy()
         while Gtk.events_pending():

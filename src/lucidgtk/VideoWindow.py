@@ -38,25 +38,25 @@ class VideoWindow(Gtk.Window):
         vidBtn.connect("clicked", self.select_video)
         self.vidContainer.pack_start(vidBtn, False, False, 0)
         
-        self.vidName = Gtk.Entry()
-        self.vidName.set_text("myVideoName")
-        self.vidContainer.pack_start(self.vidName, True, True, 0)
-        
         self.fpsBox = Gtk.VBox()
         label = Gtk.Label("Frame rate:")
         self.fpsBox.add(label)
         self.fpsNotify = Gtk.Label("")
         self.fpsBox.add(self.fpsNotify)
-        adjustment = Gtk.Adjustment(30, 5, 300, 1, 0, 0)
+        adjustment = Gtk.Adjustment(self.settings.get_int('fps'), 5, 300, 1, 0, 0)
         self.fpsSpin = Gtk.SpinButton()
         self.fpsSpin.set_adjustment(adjustment)
-        self.fpsSpin.set_value(30)
+        self.fpsSpin.set_value(self.settings.get_int('fps'))
         self.fpsSpin.set_numeric(1)
         self.fpsBox.pack_start(self.fpsSpin, False, False, 0)
         self.vidContainer.pack_start(self.fpsBox, True, True, 0)
         
         label = Gtk.Label("Continuity:")
         self.vidContainer.add(label)
+        label = Gtk.Label()
+        label.set_markup('<span foreground="green" weight="light">% of previous to overlay on each consecutive frame</span>')
+        self.vidContainer.add(label)
+                
         adjustment = Gtk.Adjustment(0.50, 0.05, 0.95, 0.01, 0, 0)
         self.continuitySpin = Gtk.SpinButton()
         self.continuitySpin.configure(adjustment,0.01,2)
@@ -65,14 +65,13 @@ class VideoWindow(Gtk.Window):
         self.continuitySpin.set_numeric(1)
         self.vidContainer.pack_start(self.continuitySpin, False, False, 0)
           
-        self.dreamBtn = Gtk.Button("DREAMIFY")
+        self.dreamBtn = Gtk.Button("START DREAMING")
         self.dreamBtn.connect("clicked", self.dream)
         self.dreamBtn.set_sensitive(False)
         self.vidContainer.pack_start(self.dreamBtn, False, False, 0)
         
         self.add(self.vidContainer)
         self.show_all()
-        self.fpsBox.hide()
 
     def select_video(self, btn):
         dialog = Gtk.FileChooserDialog("Please choose a video file", self,
@@ -83,9 +82,8 @@ class VideoWindow(Gtk.Window):
         self.add_filters(dialog)
 
         response = dialog.run()
+        
         if response == Gtk.ResponseType.OK:
-            
-            self.fpsBox.show()
             
             self.path = dialog.get_filename()
             
@@ -94,15 +92,12 @@ class VideoWindow(Gtk.Window):
         
             # It seems that opencv can't read the fps on certain videos and return NaN. In this instance default to 30
             if math.isnan(fps):
-                fps = 25
+                fps = self.settings.get_int('fps')
                 self.fpsNotify.set_markup('<span foreground="red" background="white" weight="light">!! Failed to retrieve frame rate from source !!</span>')
                 
             cap.release()
             
             self.fpsSpin.set_value(fps)
-            
-            fname = basename(self.path)
-            self.vidName.set_text(os.path.splitext(fname)[0])
             
             self.dreamBtn.set_sensitive(True)
             
@@ -126,34 +121,35 @@ class VideoWindow(Gtk.Window):
         filter_JPEG.add_mime_type("application/x-mpegURL")
         dialog.add_filter(filter_JPEG)
         
-    def make_new_fname(self):
-        fp = self.settings.get_string('vid-dir')+'/'+self.vidName.get_text()+'.avi'
-        if os.path.isfile(fp):
-            i = 0
-            while True:
-                fp = self.settings.get_string('vid-dir')+'/'+self.vidName.get_text()+'_'+str(i)+'.avi'
-                if os.path.isfile(fp)==False:
-                    break
-                i += 1
-        return fp
     
     def dream(self,btn):
+    
+        
+        tree_iter = self.mainWin.outpCombo.get_active_iter()
+        if tree_iter != None:
+            model = self.mainWin.outpCombo.get_model()
+            outpType = model[tree_iter][0]
+        
+        
         self.mainWin.mode = 'video'
         self.hide()
         self.cap = cv2.VideoCapture(self.path)
         cap = self.cap
-        fourcc = cv2.cv.CV_FOURCC(*'XVID')
+        
         w = int(cap.get(3))
         h = int(cap.get(4))
-        print w, h
         bytesize = int(cap.get(3)) * int(cap.get(4)) * 3
         limit = int(self.mainWin.settings.get_int('max-bytes'))
         (w, h) = self.mainWin.get_shrink_dimensions(w, h, bytesize, limit)
         cap.set(3, w)
         cap.set(4, h)
-        fps = self.fpsSpin.get_value()
         
-        out = cv2.VideoWriter(self.make_new_fname(),fourcc, fps, (w,h))
+        if outpType > 1:
+            fourcc = cv2.cv.CV_FOURCC(*'XVID')
+            fps = self.fpsSpin.get_value()
+            fname = self.mainWin.make_new_fname(dirSetting='vid-dir', extension='.avi')
+            out = cv2.VideoWriter(fname,fourcc, fps, (w,h))
+            
         self.mainWin.loop = 0
         self.mainWin.enable_buttons(False)
         while(True):
@@ -181,13 +177,19 @@ class VideoWindow(Gtk.Window):
             img = self.mainWin.prepare_image()
             
             self.mainWin.deepdream(self.mainWin.net, img)
-            imgout = self.mainWin.prepare_image()
-            imgout = np.uint8(np.clip(imgout, 0, 255))
-            out.write(imgout)
+            
+            if outpType == 1 or outpType == 3:
+        	    self.mainWin.save_image()
+        	    
+            if outpType > 1:  
+                imgout = self.mainWin.prepare_image()
+                imgout = np.uint8(np.clip(imgout, 0, 255))  
+                out.write(imgout)
             
             self.mainWin.loop += 1
         cap.release()
-        out.release()
+        if outpType > 1:
+            out.release()
         cv2.destroyAllWindows()
         self.mainWin.enable_buttons()
         self.mainWin.set_notif('<span foreground="blue">Ready to dream. Counting electric sheep</span>')
