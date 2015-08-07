@@ -124,7 +124,8 @@ class VideoWindow(Gtk.Window):
     
     def dream(self,btn):
     
-        
+        self.mainWin.wakeBtn.show()
+         
         tree_iter = self.mainWin.outpCombo.get_active_iter()
         if tree_iter != None:
             model = self.mainWin.outpCombo.get_model()
@@ -153,6 +154,9 @@ class VideoWindow(Gtk.Window):
         self.mainWin.loop = 0
         self.mainWin.enable_buttons(False)
         while(True):
+            if self.mainWin.wakeup:
+    	        break
+    	    
             self.mainWin.set_notif('<span foreground="white" background="purple" weight="heavy">MACHINE IS DREAMING IN TECHNICOLOR MOVING PICTURES!...</span>')
             
             # Capture frame-by-frame
@@ -191,7 +195,11 @@ class VideoWindow(Gtk.Window):
         if outpType > 1:
             out.release()
         cv2.destroyAllWindows()
+        
+        self.mainWin.wakeBtn.hide()
+        self.mainWin.wakeup = False
         self.mainWin.enable_buttons()
+        self.mainWin.set_info("")
         self.mainWin.set_notif('<span foreground="blue">Ready to dream. Counting electric sheep</span>')
 
 

@@ -55,6 +55,7 @@ class DreamWindow(Gtk.Window):
         self.grid = Gtk.Grid()
         self.add(self.grid)
         
+        self.wakeup = False 
         self.fps = False # if not set then output videos default to settings obj. value
         
         if self.initcaffe() is False:
@@ -76,6 +77,7 @@ class DreamWindow(Gtk.Window):
         self.do_notif_bar()
         
         self.show_all()
+        self.wakeBtn.hide()
     
     def media_folders_set(self):
         if os.path.isdir(self.settings.get_string('im-dir')) and os.path.isdir(self.settings.get_string('vid-dir')):
@@ -373,8 +375,12 @@ class DreamWindow(Gtk.Window):
         self.fBtn.connect("clicked", self.on_fBtn_clicked)
         self.topBar.pack_start(self.fBtn, False, False, 0)
         
-        self.dreamBtn = Gtk.Button('START DREAMING')
+        self.wakeBtn = Gtk.Button('WAKE UP!')
+        self.wakeBtn.connect("clicked", self.on_wake_clicked)
+        self.topBar.pack_start(self.wakeBtn, False, False, 0)
+        self.topBar.set_child_packing(self.wakeBtn, False, True, 0, 1)
         
+        self.dreamBtn = Gtk.Button('START DREAMING')
         self.dreamBtn.connect("clicked", self.on_dream_clicked)
         self.topBar.pack_start(self.dreamBtn, False, False, 0)
         self.topBar.set_child_packing(self.dreamBtn, False, True, 0, 1)
@@ -383,6 +389,9 @@ class DreamWindow(Gtk.Window):
         
         self.grid.attach(self.topBar,1,1,2,1)
         
+    def on_wake_clicked(self, btn):
+        self.wakeup = True
+    
     def set_octv_val(self, btn):
         self.settings.set_int('n-octaves',btn.get_value())
     
@@ -488,7 +497,7 @@ class DreamWindow(Gtk.Window):
         self.mode = 'image'
         self.enable_buttons(False)
         self.set_notif('<span foreground="white" background="red" weight="heavy">COMPUTER IS DREAMING. DO NOT DISTURB!...</span>')
-            
+        self.wakeBtn.show()    
         while Gtk.events_pending():
             Gtk.main_iteration_do(True)
         
@@ -501,6 +510,9 @@ class DreamWindow(Gtk.Window):
             vidOut = self.init_outp_video()
         
     	for i in xrange(int(self.loopSpin.get_value())):
+    	    if self.wakeup:
+    	        break
+    	    
     	    self.loop = i
             
             img = self.prepare_image()
@@ -530,7 +542,8 @@ class DreamWindow(Gtk.Window):
         if outpType > 1:
             vidOut.release()
             cv2.destroyAllWindows()   
-                
+        self.wakeup = False        
+        self.wakeBtn.hide()
         self.enable_buttons()
 
     def on_fBtn_clicked(self, combo):
@@ -599,5 +612,5 @@ class DreamWindow(Gtk.Window):
 
 win = DreamWindow()
 win.connect("delete-event", Gtk.main_quit)
-win.show_all()
+
 Gtk.main()
