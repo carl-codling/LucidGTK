@@ -338,6 +338,16 @@ class DreamWindow(Gtk.Window):
         
         self.grid.attach_next_to(self.adjBar, self.topBar, Gtk.PositionType.BOTTOM, 1, 3)
     
+    def on_inp_combo_changed(self, combo):
+        tree_iter = combo.get_active_iter()
+        if tree_iter != None:
+            model = combo.get_model()
+            v = model[tree_iter][0]
+            if v==1:
+                self.dreamBtn.show()
+            elif v==2:
+                self.dreamBtn.hide()
+    
     def do_top_bar(self):
     	self.topBar = Gtk.Box()
         #logo = Gtk.Image()
@@ -346,17 +356,12 @@ class DreamWindow(Gtk.Window):
         #self.topBar.pack_start(logo, False, False, 0)
         
     	
-        label = Gtk.Label("Output Layer:")
-        self.topBar.add(label)
-        self.topBar.pack_start(self.make_layer_select(), False, False, True)
-        
-        label = Gtk.Label("Input:")
+        label = Gtk.Label("Input type:")
         self.topBar.add(label)
         inp_store = Gtk.ListStore(int, str)
         inp_store.append([1, "Image"])
         inp_store.append([2, "Video"])
         self.inpCombo = Gtk.ComboBox.new_with_model(inp_store)
-        #inp_combo.connect("changed", self.on_inp_combo_changed)
         renderer_text = Gtk.CellRendererText()
         self.inpCombo.pack_start(renderer_text, True)
         self.inpCombo.add_attribute(renderer_text, "text", 1)
@@ -373,6 +378,8 @@ class DreamWindow(Gtk.Window):
         self.dreamBtn.connect("clicked", self.on_dream_clicked)
         self.topBar.pack_start(self.dreamBtn, False, False, 0)
         self.topBar.set_child_packing(self.dreamBtn, False, True, 0, 1)
+        
+        self.inpCombo.connect("changed", self.on_inp_combo_changed)
         
         self.grid.attach(self.topBar,1,1,2,1)
         
@@ -401,7 +408,11 @@ class DreamWindow(Gtk.Window):
     	self.bottBar = Gtk.Box()
     	self.grid.attach_next_to(self.bottBar, self.scrollWin, Gtk.PositionType.BOTTOM, 1, 3)
     	
-    	label = Gtk.Label("Output as:")
+        label = Gtk.Label("Output Layer:")
+        self.bottBar.add(label)
+        self.bottBar.pack_start(self.make_layer_select(), False, False, True)
+        
+    	label = Gtk.Label("Save as:")
         self.bottBar.add(label)
         
         self.imageName = Gtk.Entry()
