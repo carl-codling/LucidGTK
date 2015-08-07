@@ -105,19 +105,19 @@
       </description>
     </key>
     
-    <key name='auto-save' type='b'>
-      <default>true</default>
-      <summary>Auto save images</summary>
-      <description>
-        If set to true an image will be saved at the end of each loop. 
-      </description>
-    </key>
-    
     <key name='im-name' type='s'>
       <default>'ImageName'</default>
       <summary>Base image name</summary>
       <description>
         The base image name for saving .jpg image output. File extension is not needed and an integer will be appended if file already exists (ie. ImageName_3.jpg). 
+      </description>
+    </key>
+    
+    <key name='fps' type='i'>
+      <default>25</default>
+      <summary>Default FPS</summary>
+      <description>
+        Default frames per second for output videos 
       </description>
     </key>
     
