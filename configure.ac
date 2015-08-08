@@ -1,4 +1,4 @@
-AC_INIT([Lucid-GTK], [0.1])
+AC_INIT([Lucid-GTK], [0.1.1])
 
 AM_INIT_AUTOMAKE
 AM_PATH_PYTHON([2.7])
