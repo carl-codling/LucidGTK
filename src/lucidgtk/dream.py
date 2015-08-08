@@ -286,8 +286,8 @@ class DreamWindow(Gtk.Window):
         self.adjBar = Gtk.Box()
         
         nloops = self.settings.get_int('n-loops')
-    	label = Gtk.Label("Loops:")
-        self.adjBar.add(label)
+    	self.loopLabel = Gtk.Label("Loops:")
+        self.adjBar.add(self.loopLabel)
         adjustment = Gtk.Adjustment(nloops, 1, 99999, 1, 0, 0)
         self.loopSpin = Gtk.SpinButton()
         self.loopSpin.set_adjustment(adjustment)
@@ -330,8 +330,8 @@ class DreamWindow(Gtk.Window):
         self.adjBar.pack_start(self.scaleSpin, False, False, 0)
         
         zoom_scale = self.settings.get_double('zoom-scale')
-        label = Gtk.Label("Zoom:")
-        self.adjBar.add(label)
+        self.zoomLabel = Gtk.Label("Zoom:")
+        self.adjBar.add(self.zoomLabel)
         adjustment = Gtk.Adjustment(zoom_scale, 0.00, 0.10, 0.01, 0, 0)
         self.zoomSpin = Gtk.SpinButton()
         self.zoomSpin.configure(adjustment,0.01,2)
@@ -341,8 +341,8 @@ class DreamWindow(Gtk.Window):
         self.adjBar.pack_start(self.zoomSpin, False, False, 0)
         
         deg_val = self.settings.get_double('rot-deg')
-        label = Gtk.Label("Rotation:")
-        self.adjBar.add(label)
+        self.degLabel = Gtk.Label("Rotation:")
+        self.adjBar.add(self.degLabel)
         adjustment = Gtk.Adjustment(deg_val, -10.00, 10.00, 0.10, 0, 0)
         self.degSpin = Gtk.SpinButton()
         self.degSpin.configure(adjustment,0.10,2)
@@ -360,8 +360,21 @@ class DreamWindow(Gtk.Window):
             v = model[tree_iter][0]
             if v==1:
                 self.dreamBtn.show()
+                self.loopSpin.show()
+                self.zoomSpin.show()
+                self.degSpin.show()
+                self.zoomLabel.show()
+                self.degLabel.show()
+                self.loopLabel.show()
             elif v==2:
                 self.dreamBtn.hide()
+                self.loopSpin.hide()
+                self.zoomSpin.hide()
+                self.degSpin.hide()
+                self.zoomLabel.hide()
+                self.degLabel.hide()
+                self.loopLabel.hide()
+                
     
     def do_top_bar(self):
     	self.topBar = Gtk.Box()
@@ -447,7 +460,6 @@ class DreamWindow(Gtk.Window):
         outp_store.append([2, ".AVI"])
         outp_store.append([3, ".JPG & .AVI"])
         self.outpCombo = Gtk.ComboBox.new_with_model(outp_store)
-        #inp_combo.connect("changed", self.on_inp_combo_changed)
         renderer_text = Gtk.CellRendererText()
         self.outpCombo.pack_start(renderer_text, True)
         self.outpCombo.add_attribute(renderer_text, "text", 1)
@@ -565,16 +577,17 @@ class DreamWindow(Gtk.Window):
         self.enable_buttons()
 
     def on_fBtn_clicked(self, combo):
+        t = self.get_input_mode()
+        if t is 1:
+            self.on_fselect_clicked()
+        elif t is 2:
+            self.on_vidbtn_clicked()
+            
+    def get_input_mode(self):
         tree_iter = self.inpCombo.get_active_iter()
         if tree_iter != None:
             model = self.inpCombo.get_model()
-            t = model[tree_iter][0]
-            if t is 1:
-                self.on_fselect_clicked()
-            elif t is 2:
-                self.on_vidbtn_clicked()
-            
-        
+            return model[tree_iter][0]
     
     
     def on_fselect_clicked(self):
