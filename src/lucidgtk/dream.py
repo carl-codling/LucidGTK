@@ -46,8 +46,11 @@ class DreamWindow(Gtk.Window):
         for key in kwargs:
             setattr(self, key, kwargs[key])
             
+        
+    
+    def run(self):        
         self.settings = Gio.Settings('org.rebelweb.dreamer')
-        Gtk.Window.__init__(self, title='Lucid-GTK')
+        Gtk.Window.__init__(self, title=self.package+' | v'+self.version)
         self.set_icon_name('lucid-gtk')
         
         #self.set_title("%s v%s" % (self.package, self.version))
@@ -68,7 +71,6 @@ class DreamWindow(Gtk.Window):
                    
         self.mode = 'image'
         
-        
         self.do_top_bar()
         self.do_adjustments_bar()
         self.do_info_bar()
@@ -78,6 +80,10 @@ class DreamWindow(Gtk.Window):
         
         self.show_all()
         self.wakeBtn.hide()
+        self.connect("delete-event", Gtk.main_quit)
+
+        Gtk.main()
+        
     
     def media_folders_set(self):
         if os.path.isdir(self.settings.get_string('im-dir')) and os.path.isdir(self.settings.get_string('vid-dir')):
@@ -470,7 +476,7 @@ class DreamWindow(Gtk.Window):
     	image = PIL.Image.open('.temp/temp.jpg')
     	fp = self.make_new_fname()
     	image.save(fp, optimize=True)
-    	self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+fp+'</span></span>')
+    	#self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+fp+'</span></span>')
     
     def make_new_fname(self, dirSetting='im-dir', extension='.jpg'):
         fp = self.settings.get_string(dirSetting)+'/'+self.imageName.get_text()+extension
@@ -531,6 +537,7 @@ class DreamWindow(Gtk.Window):
             if outpType > 1:
                 imgout = self.prepare_image()
                 imgout = np.uint8(np.clip(imgout, 0, 255))
+                imgout = cv2.cvtColor(imgout, cv2.COLOR_BGR2RGB)
                 vidOut.write(imgout)
                 
             if outpType == 1 or outpType == 3:
@@ -610,7 +617,4 @@ class DreamWindow(Gtk.Window):
     	return np.float32(PIL.Image.open(self.imagef))
     	
 
-win = DreamWindow()
-win.connect("delete-event", Gtk.main_quit)
 
-Gtk.main()
