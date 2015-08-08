@@ -18,7 +18,7 @@
 from gi.repository import Gtk, Gio, GLib
 
 import json
-
+import os
 
 class SettingsWindow(Gtk.Window):
 
@@ -30,114 +30,200 @@ class SettingsWindow(Gtk.Window):
         
         self.set_border_width(10)
         
-        self.table = Gtk.Table(7, 7, True)
+        self.table = Gtk.Table(9, 6, True)
+        
+        self.table.set_col_spacings(5)
+        self.table.set_row_spacings(5)
+        self.table.set_homogeneous(False)
         
         # ROW 1
         
-        
-        
-        # ROW 2
-        label = Gtk.Label("Caffe Model File:")
-        self.table.attach(label, 0, 1, 1, 2)
-        
-        self.modelf = Gtk.Label(self.settings.get_string('model-file'))
-        self.table.attach(self.modelf, 1, 6, 1, 2)
-        
-        self.modelfBtn = Gtk.Button('Change')
-        self.modelfBtn.connect("clicked", self.on_modelfBtn_clicked)
-        self.table.attach(self.modelfBtn, 6, 7, 1, 2)
-        
-        # ROW 3
-        label = Gtk.Label("Caffe Deploy File:")
-        self.table.attach(label, 0, 1, 2, 3)
-        
-        self.deploy = Gtk.Label(self.settings.get_string('deploy-prototxt'))
-        self.table.attach(self.deploy, 1, 6, 2, 3)
-        
-        self.deployBtn = Gtk.Button('Change')
-        self.deployBtn.connect("clicked", self.on_deployBtn_clicked)
-        self.table.attach(self.deployBtn, 6, 7, 2, 3)
-        
-        # ROW 4
-        
         label = Gtk.Label("Max. bytes of input image:")
-        self.table.attach(label, 0, 1, 3, 4)
-        
+        self.table.attach(label, 0, 1, 0, 1)
         
         adjustment = Gtk.Adjustment(self.settings.get_int('max-bytes'), 30000, 10000000, 1000, 0, 0)
         self.maxbyt = Gtk.SpinButton()
         self.maxbyt.set_adjustment(adjustment)
         self.maxbyt.set_value(self.settings.get_int('max-bytes'))
         self.maxbyt.set_numeric(1)
-        self.table.attach(self.maxbyt, 1, 6, 3, 4)
+        self.table.attach(self.maxbyt, 1, 2, 0, 1)
+        
+        
+        label = Gtk.Label("Default FPS:")
+        self.table.attach(label, 2, 3, 0, 1)
+        
+        adjustment = Gtk.Adjustment(self.settings.get_int('fps'), 10, 3000, 5, 0, 0)
+        self.fps = Gtk.SpinButton()
+        self.fps.set_adjustment(adjustment)
+        self.fps.set_value(self.settings.get_int('fps'))
+        self.fps.set_numeric(1)
+        self.table.attach(self.fps, 3, 4, 0, 1)
+        
+        
+        # ROW 2
+        label = Gtk.Label("Caffe Models directory:")
+        self.table.attach(label, 0, 1, 1, 2)
+        
+        self.modeldir = Gtk.Label(self.settings.get_string('models-dir'))
+        self.table.attach(self.modeldir, 1, 5, 1, 2)
+        
+        self.modeldirBtn = Gtk.Button('Change')
+        self.modeldirBtn.connect("clicked", self.on_modelDirBtn_clicked)
+        self.table.attach(self.modeldirBtn, 5, 6, 1, 2)
+        
+        
+        # ROW 3
+        label = Gtk.Label("Caffe Model File:")
+        self.table.attach(label, 0, 1, 2, 3)
+        
+        self.modelf = Gtk.Label(self.settings.get_string('model-file'))
+        self.table.attach(self.modelf, 1, 5, 2, 3)
+        
+        self.modelfBtn = Gtk.Button('Change')
+        self.modelfBtn.connect("clicked", self.on_modelfBtn_clicked)
+        self.table.attach(self.modelfBtn, 5, 6, 2, 3)
+        
+        # ROW 4
+        label = Gtk.Label("Caffe Deploy File:")
+        self.table.attach(label, 0, 1, 3, 4)
+        
+        self.deploy = Gtk.Label(self.settings.get_string('deploy-prototxt'))
+        self.table.attach(self.deploy, 1, 5, 3, 4)
+        
+        self.deployBtn = Gtk.Button('Change')
+        self.deployBtn.connect("clicked", self.on_deployBtn_clicked)
+        self.table.attach(self.deployBtn, 5, 6, 3, 4)
+        
         
         # ROW 5
         label = Gtk.Label("Save images in:")
         self.table.attach(label, 0, 1, 4, 5)
         
         self.imdir = Gtk.Label(self.settings.get_string('im-dir'))
-        self.table.attach(self.imdir, 1, 6, 4, 5)
+        self.table.attach(self.imdir, 1, 5, 4, 5)
         
         self.imdirBtn = Gtk.Button('Change')
         self.imdirBtn.connect("clicked", self.on_imdirBtn_clicked)
-        self.table.attach(self.imdirBtn, 6, 7, 4, 5)
+        self.table.attach(self.imdirBtn, 5, 6, 4, 5)
         
         # ROW 6
         label = Gtk.Label("Save videos in:")
         self.table.attach(label, 0, 1, 5, 6)
         
         self.viddir = Gtk.Label(self.settings.get_string('vid-dir'))
-        self.table.attach(self.viddir, 1, 6, 5, 6)
+        self.table.attach(self.viddir, 1, 5, 5, 6)
         
         self.viddirBtn = Gtk.Button('Change')
         self.viddirBtn.connect("clicked", self.on_viddirBtn_clicked)
-        self.table.attach(self.viddirBtn, 6, 7, 5, 6)
+        self.table.attach(self.viddirBtn, 5, 6, 5, 6)
         
-        #ROW 7
+        # ROW 7
+        label = Gtk.Label("Find images in:")
+        self.table.attach(label, 0, 1, 6, 7)
+        
+        self.imsrchdir = Gtk.Label(self.settings.get_string('im-search-dir'))
+        self.table.attach(self.imsrchdir, 1, 5, 6, 7)
+        
+        self.imsrchdirBtn = Gtk.Button('Change')
+        self.imsrchdirBtn.connect("clicked", self.on_imsrchdirBtn_clicked)
+        self.table.attach(self.imsrchdirBtn, 5, 6, 6, 7)
+        
+        # ROW 8
+        label = Gtk.Label("Find videos in:")
+        self.table.attach(label, 0, 1, 7, 8)
+        
+        self.vidsrchdir = Gtk.Label(self.settings.get_string('vid-search-dir'))
+        self.table.attach(self.vidsrchdir, 1, 5, 7, 8)
+        
+        self.vidsrchdirBtn = Gtk.Button('Change')
+        self.vidsrchdirBtn.connect("clicked", self.on_vidsrchdirBtn_clicked)
+        self.table.attach(self.vidsrchdirBtn, 5, 6, 7, 8)
+        
+        #ROW 9
         self.save = Gtk.Button('Save')
         self.save.connect("clicked", self.on_save_clicked)
-        self.table.attach(self.save, 3, 4, 6, 7)
+        self.table.attach(self.save, 2, 3, 8, 9)
         self.cancel = Gtk.Button('Cancel')
         self.cancel.connect("clicked", self.on_cancel_clicked)
-        self.table.attach(self.cancel, 4, 5, 6, 7)
+        self.table.attach(self.cancel, 3, 4, 8, 9)
         
         self.add(self.table)
         self.show_all()
     
     def on_save_clicked(self, btn):
+        self.settings.set_string('models-dir',self.modeldir.get_text())
+        self.settings.set_string('im-search-dir',self.imsrchdir.get_text())
+        self.settings.set_string('vid-search-dir',self.vidsrchdir.get_text())
         self.settings.set_string('im-dir',self.imdir.get_text())
         self.settings.set_string('vid-dir',self.viddir.get_text())
         self.settings.set_string('deploy-prototxt',self.deploy.get_text())
         self.settings.set_string('model-file',self.modelf.get_text())
+        self.settings.set_int('fps',self.fps.get_value())
         self.settings.set_int('max-bytes',self.maxbyt.get_value())
         self.destroy()
         self.mainWin.grid.destroy()
         while Gtk.events_pending():
             Gtk.main_iteration_do(True)
-        self.mainWin.__init__()
-        self.mainWin.show_all()
+        self.mainWin.run()
         
     def on_cancel_clicked(self, btn):
         self.destroy()
     
     def on_imdirBtn_clicked(self, btn):
-        self.folder_chooser(self.imdir, 'im-dir')
+        md = self.settings.get_string('im-dir')
+        folder = False
+        if len(md) > 0 and os.path.isdir(md):
+            folder = md 
+        self.folder_chooser(self.imdir, 'im-dir', folder)
         
     def on_viddirBtn_clicked(self, btn):
-        self.folder_chooser(self.viddir, 'vid-dir')
+        md = self.settings.get_string('vid-dir')
+        folder = False
+        if len(md) > 0 and os.path.isdir(md):
+            folder = md 
+        self.folder_chooser(self.viddir, 'vid-dir', folder)
+    
+    def on_imsrchdirBtn_clicked(self, btn):
+        md = self.settings.get_string('im-search-dir')
+        folder = False
+        if len(md) > 0 and os.path.isdir(md):
+            folder = md 
+        self.folder_chooser(self.imsrchdir, 'im-search-dir', folder)
+        
+    def on_vidsrchdirBtn_clicked(self, btn):
+        md = self.settings.get_string('vid-search-dir')
+        folder = False
+        if len(md) > 0 and os.path.isdir(md):
+            folder = md 
+        self.folder_chooser(self.vidsrchdir, 'vid-search-dir', folder)
         
     def on_deployBtn_clicked(self, btn):
-        self.file_chooser(self.deploy, 'deploy-prototxt')
+        md = self.settings.get_string('models-dir')
+        folder = False
+        if len(md) > 0 and os.path.isdir(md):
+            folder = md 
+        self.file_chooser(self.deploy, 'deploy-prototxt', folder)
         
     def on_modelfBtn_clicked(self, btn):
-        self.file_chooser(self.modelf, 'model-file')
-        
-    def file_chooser(self, target, key):
+        md = self.settings.get_string('models-dir')
+        folder = False
+        if len(md) > 0 and os.path.isdir(md):
+            folder = md 
+        self.file_chooser(self.modelf, 'model-file', folder)
+    
+    def on_modelDirBtn_clicked(self, btn):
+        self.folder_chooser(self.modeldir, 'models-dir')
+    
+       
+    def file_chooser(self, target, key, folder):
         dialog = Gtk.FileChooserDialog("Please choose a file", self,
             Gtk.FileChooserAction.OPEN,
             (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
              Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
-
+        
+        if folder != False:
+            dialog.set_current_folder(folder)
+        
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
         
@@ -146,13 +232,16 @@ class SettingsWindow(Gtk.Window):
             
         dialog.destroy()
     
-    def folder_chooser(self, target, key):
+    def folder_chooser(self, target, key, folder):
         dialog = Gtk.FileChooserDialog("Please choose a folder", self,
             Gtk.FileChooserAction.SELECT_FOLDER,
             (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
              "Select", Gtk.ResponseType.OK))
         dialog.set_default_size(800, 400)
-
+        
+        if folder != False:
+            dialog.set_current_folder(folder)
+            
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
             t = dialog.get_filename() 

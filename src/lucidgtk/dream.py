@@ -45,13 +45,14 @@ class DreamWindow(Gtk.Window):
     def __init__(self, *args, **kwargs):
         for key in kwargs:
             setattr(self, key, kwargs[key])
-            
+        Gtk.Window.__init__(self, title=self.package+' | v'+self.version)
+        self.set_icon_name('lucid-gtk')
+        self.connect("delete-event", Gtk.main_quit)
         
     
     def run(self):        
         self.settings = Gio.Settings('org.rebelweb.dreamer')
-        Gtk.Window.__init__(self, title=self.package+' | v'+self.version)
-        self.set_icon_name('lucid-gtk')
+        
         
         #self.set_title("%s v%s" % (self.package, self.version))
         self.set_border_width(10)
@@ -80,7 +81,6 @@ class DreamWindow(Gtk.Window):
         
         self.show_all()
         self.wakeBtn.hide()
-        self.connect("delete-event", Gtk.main_quit)
 
         Gtk.main()
         
@@ -573,7 +573,12 @@ class DreamWindow(Gtk.Window):
              Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
 
         self.add_filters(dialog)
-
+        
+        md = self.settings.get_string('im-search-dir')
+        
+        if len(md) > 0 and os.path.isdir(md):
+            dialog.set_current_folder(md) 
+        
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
         

@@ -78,7 +78,12 @@ class VideoWindow(Gtk.Window):
             Gtk.FileChooserAction.OPEN,
             (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
              Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
-
+        
+        md = self.settings.get_string('vid-search-dir')
+        
+        if len(md) > 0 and os.path.isdir(md):
+            dialog.set_current_folder(md)
+        
         self.add_filters(dialog)
 
         response = dialog.run()
