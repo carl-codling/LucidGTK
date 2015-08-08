@@ -52,7 +52,7 @@ class DreamWindow(Gtk.Window):
     
     def run(self):        
         self.settings = Gio.Settings('org.rebelweb.dreamer')
-        
+        self.string = self.strings()
         
         #self.set_title("%s v%s" % (self.package, self.version))
         self.set_border_width(10)
@@ -83,6 +83,13 @@ class DreamWindow(Gtk.Window):
         self.wakeBtn.hide()
 
         Gtk.main()
+        
+    
+    def strings(self):
+        return {
+            'ready':'Ready to dream. Counting electric sheep',
+            'dreaming':'DREAMING. DO NOT DISTURB!...'
+        }
         
     
     def media_folders_set(self):
@@ -246,7 +253,7 @@ class DreamWindow(Gtk.Window):
         label.set_markup('<span size="larger">Status: </span>')
         self.notifBar.add(label)
         self.notif = Gtk.Label("Ready")
-        self.notif.set_markup('<span foreground="blue" size="larger">Ready to dream. Counting electric sheep</span>')
+        self.notif.set_markup('<span foreground="blue" size="larger">%s</span>'%self.string['ready'])
         self.notifBar.add(self.notif)
         self.grid.attach_next_to(self.notifBar, self.bottBar, Gtk.PositionType.BOTTOM, 1, 3)
         
@@ -476,8 +483,7 @@ class DreamWindow(Gtk.Window):
     	image = PIL.Image.open('.temp/temp.jpg')
     	fp = self.make_new_fname()
     	image.save(fp, optimize=True)
-    	#self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+fp+'</span></span>')
-    
+    	
     def make_new_fname(self, dirSetting='im-dir', extension='.jpg'):
         fp = self.settings.get_string(dirSetting)+'/'+self.imageName.get_text()+extension
         if os.path.isfile(fp):
@@ -502,7 +508,7 @@ class DreamWindow(Gtk.Window):
     def on_dream_clicked(self, button):
         self.mode = 'image'
         self.enable_buttons(False)
-        self.set_notif('<span foreground="white" background="red" weight="heavy">COMPUTER IS DREAMING. DO NOT DISTURB!...</span>')
+        self.set_notif('<span foreground="white" background="blue" weight="heavy">%s</span>'%self.string['dreaming'])
         self.wakeBtn.show()    
         while Gtk.events_pending():
             Gtk.main_iteration_do(True)
@@ -514,6 +520,11 @@ class DreamWindow(Gtk.Window):
             
         if outpType > 1:
             vidOut = self.init_outp_video()
+            # add the first unprocessed frame
+            imgout = self.prepare_image()
+            imgout = np.uint8(np.clip(imgout, 0, 255))
+            imgout = cv2.cvtColor(imgout, cv2.COLOR_BGR2RGB)
+            vidOut.write(imgout)
         
     	for i in xrange(int(self.loopSpin.get_value())):
     	    if self.wakeup:
@@ -544,7 +555,7 @@ class DreamWindow(Gtk.Window):
         	    self.save_image()
 
         self.set_info("")
-        self.set_notif('<span foreground="blue">Ready to dream. Counting electric sheep</span>') 
+        self.set_notif('<span foreground="blue">%s</span>'%self.string['ready']) 
         
         if outpType > 1:
             vidOut.release()

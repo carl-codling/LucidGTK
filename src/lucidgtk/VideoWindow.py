@@ -162,7 +162,7 @@ class VideoWindow(Gtk.Window):
             if self.mainWin.wakeup:
     	        break
     	    
-            self.mainWin.set_notif('<span foreground="white" background="purple" weight="heavy">MACHINE IS DREAMING IN TECHNICOLOR MOVING PICTURES!...</span>')
+            self.mainWin.set_notif('<span foreground="white" background="blue" weight="heavy">%s</span>'%self.mainWin.string['dreaming'])
             
             # Capture frame-by-frame
             ret, frame = cap.read()
@@ -205,7 +205,7 @@ class VideoWindow(Gtk.Window):
         self.mainWin.wakeup = False
         self.mainWin.enable_buttons()
         self.mainWin.set_info("")
-        self.mainWin.set_notif('<span foreground="blue">Ready to dream. Counting electric sheep</span>')
+        self.mainWin.set_notif('<span foreground="blue">%s</span>'%self.mainWin.string['ready'])
 
 
 
