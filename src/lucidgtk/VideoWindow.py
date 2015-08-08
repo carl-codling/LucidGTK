@@ -91,6 +91,9 @@ class VideoWindow(Gtk.Window):
         if response == Gtk.ResponseType.OK:
             
             self.path = dialog.get_filename()
+            fname = basename(self.path)
+            nm = os.path.splitext(fname)[0]
+            self.mainWin.imageName.set_text(nm)
             
             cap = cv2.VideoCapture(self.path)
             fps = cap.get(5)
