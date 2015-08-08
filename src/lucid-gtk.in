@@ -4,7 +4,9 @@ import sys
 sys.path.insert(1, '@pythondir@')
 
 from lucidgtk.dream import DreamWindow
+from gi.repository import Gtk
 
 if __name__ == "__main__":
     dw = DreamWindow(package="@PACKAGE@", version="@VERSION@")
     dw.run()
+    Gtk.main()

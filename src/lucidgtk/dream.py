@@ -48,13 +48,11 @@ class DreamWindow(Gtk.Window):
         Gtk.Window.__init__(self, title=self.package+' | v'+self.version)
         self.set_icon_name('lucid-gtk')
         self.connect("delete-event", Gtk.main_quit)
-        
-    
-    def run(self):        
         self.settings = Gio.Settings('org.rebelweb.dreamer')
         self.string = self.strings()
+    
+    def run(self):        
         
-        #self.set_title("%s v%s" % (self.package, self.version))
         self.set_border_width(10)
         self.grid = Gtk.Grid()
         self.add(self.grid)
@@ -82,7 +80,6 @@ class DreamWindow(Gtk.Window):
         self.show_all()
         self.wakeBtn.hide()
 
-        Gtk.main()
         
     
     def strings(self):
@@ -174,7 +171,7 @@ class DreamWindow(Gtk.Window):
         a = np.uint8(np.clip(a, 0, 255))
         image = PIL.Image.fromarray(a)
         image.save(impath)
-        self.reset_image(impath)
+        self.display_image(impath)
     
     def make_step(self, net, step_size=1.5, jitter=32, clip=True, objective=objective_L2):
        
@@ -378,11 +375,6 @@ class DreamWindow(Gtk.Window):
     
     def do_top_bar(self):
     	self.topBar = Gtk.Box()
-        #logo = Gtk.Image()
-        #pb = Pixbuf.new_from_file('src/lucidgtk/lucid-logo.png')
-        #logo.set_from_pixbuf(pb)
-        #self.topBar.pack_start(logo, False, False, 0)
-        
     	
         label = Gtk.Label("Input type:")
         self.topBar.add(label)
@@ -484,7 +476,7 @@ class DreamWindow(Gtk.Window):
         self.imContainer.add(self.im)
         self.imContainer.set_size(self.pb.get_width(),self.pb.get_height())
     
-    def reset_image(self, im):
+    def display_image(self, im):
     	self.imagef = im
     	pb = Pixbuf.new_from_file(im)
         pb = self.check_im_size(pb)
@@ -607,7 +599,7 @@ class DreamWindow(Gtk.Window):
         if response == Gtk.ResponseType.OK:
         
             pname = dialog.get_filename()
-            self.reset_image(pname)
+            self.display_image(pname)
             fname = basename(pname)
             nm = os.path.splitext(fname)[0]
             self.imageName.set_text(nm)

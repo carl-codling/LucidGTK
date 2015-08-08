@@ -170,6 +170,8 @@ class VideoWindow(Gtk.Window):
             if frame is None:
                 break
             
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
             src = PIL.Image.fromarray(frame)
             size = w,h
             src = src.resize(size, PIL.Image.ANTIALIAS)
@@ -180,8 +182,9 @@ class VideoWindow(Gtk.Window):
             else:
                 image = src
             imname = '.temp/temp.jpg'
+            
             image.save(imname)
-            self.mainWin.reset_image(imname)
+            self.mainWin.display_image(imname)
                 
             img = self.mainWin.prepare_image()
             
@@ -192,7 +195,8 @@ class VideoWindow(Gtk.Window):
         	    
             if outpType > 1:  
                 imgout = self.mainWin.prepare_image()
-                imgout = np.uint8(np.clip(imgout, 0, 255))  
+                imgout = np.uint8(np.clip(imgout, 0, 255)) 
+                imgout = cv2.cvtColor(imgout, cv2.COLOR_RGB2BGR) 
                 out.write(imgout)
             
             self.mainWin.loop += 1
