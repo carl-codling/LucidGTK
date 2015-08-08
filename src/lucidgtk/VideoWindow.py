@@ -180,11 +180,11 @@ class VideoWindow(Gtk.Window):
             src = src.resize(size, PIL.Image.ANTIALIAS)
             
             if self.mainWin.loop>0:
-                overl = PIL.Image.open('.temp/temp.jpg')
+                overl = PIL.Image.open(self.mainWin.tempImagePath)
                 image = PIL.Image.blend(src, overl, self.continuitySpin.get_value())
             else:
                 image = src
-            imname = '.temp/temp.jpg'
+            imname = self.mainWin.tempImagePath
             
             image.save(imname)
             self.mainWin.display_image(imname)

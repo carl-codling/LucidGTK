@@ -73,14 +73,24 @@ class DreamWindow(Gtk.Window):
         self.do_top_bar()
         self.do_adjustments_bar()
         self.do_info_bar()
-        self.set_image('.temp/temp.jpg')
+        self.tempImagePath = self.get_temp_im_path()
+        self.set_image(self.tempImagePath)
         self.do_bottom_bar()
         self.do_notif_bar()
         
         self.show_all()
         self.wakeBtn.hide()
 
-        
+    def get_temp_im_path(self):
+		imdir = self.settings.get_string('im-dir')+'/.temp'
+		impath = imdir+'/lucidgtk-temp.jpeg'
+		if os.path.isdir(imdir) == False:
+			os.makedirs(imdir)
+		if os.path.isfile(impath) == False:
+			im = PIL.Image.new('RGB', (100,100), 'white')
+			
+			im.save(impath, 'jpeg')
+		return impath
     
     def strings(self):
         return {
@@ -167,11 +177,12 @@ class DreamWindow(Gtk.Window):
 	        return pbnew
 	    return pb
     
-    def showarray(self, a, fmt='jpeg', impath='.temp/temp.jpg'):
-        a = np.uint8(np.clip(a, 0, 255))
-        image = PIL.Image.fromarray(a)
-        image.save(impath)
-        self.display_image(impath)
+    def showarray(self, a, fmt='jpeg'):
+		impath=self.tempImagePath
+		a = np.uint8(np.clip(a, 0, 255))
+		image = PIL.Image.fromarray(a)
+		image.save(impath)
+		self.display_image(impath)
     
     def make_step(self, net, step_size=1.5, jitter=32, clip=True, objective=objective_L2):
        
@@ -484,7 +495,7 @@ class DreamWindow(Gtk.Window):
     	self.im.set_from_pixbuf(pb)
         
     def save_image(self,a=0):
-    	image = PIL.Image.open('.temp/temp.jpg')
+    	image = PIL.Image.open(self.tempImagePath)
     	fp = self.make_new_fname()
     	image.save(fp, optimize=True)
     	
