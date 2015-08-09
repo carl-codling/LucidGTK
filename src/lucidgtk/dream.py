@@ -216,7 +216,6 @@ class DreamWindow(Gtk.Window):
     
     
     def enable_buttons(self, v=True):
-        self.settingsBtn.set_sensitive(v)
         self.fBtn.set_sensitive(v)
         self.dreamBtn.set_sensitive(v)
         self.inpCombo.set_sensitive(v)
@@ -254,32 +253,32 @@ class DreamWindow(Gtk.Window):
     
     def make_step(self, net, step_size=1.5, jitter=32, clip=True, objective=objective_L2):
        
-        tree_iter = self.layer_combo.get_active_iter()
-        if tree_iter != None:
-            model = self.layer_combo.get_model()
-            end = model[tree_iter][0]
-        else:
-            raise Exception("No output layer is set!")
-            return
-        
-        src = net.blobs['data'] # input image is stored in Net's 'data' blob
-        dst = net.blobs[end]
+		tree_iter = self.layer_combo.get_active_iter()
+		if tree_iter != None:
+			model = self.layer_combo.get_model()
+			end = model[tree_iter][0]
+		else:
+			raise Exception("No output layer is set!")
+			return
 
-        ox, oy = np.random.randint(-jitter, jitter+1, 2)
-        src.data[0] = np.roll(np.roll(src.data[0], ox, -1), oy, -2) # apply jitter shift
+		src = net.blobs['data'] # input image is stored in Net's 'data' blob
+		dst = net.blobs[end]
 
-        net.forward(end=end)
-        objective(dst)  # specify the optimization objective
-        net.backward(start=end)
-        g = src.diff[0]
-        # apply normalized ascent step to the input image
-        src.data[:] += step_size/np.abs(g).mean() * g
+		ox, oy = np.random.randint(-jitter, jitter+1, 2)
+		src.data[0] = np.roll(np.roll(src.data[0], ox, -1), oy, -2) # apply jitter shift
 
-        src.data[0] = np.roll(np.roll(src.data[0], -ox, -1), -oy, -2) # unshift image
+		net.forward(end=end)
+		objective(dst)  # specify the optimization objective
+		net.backward(start=end)
+		g = src.diff[0]
+		# apply normalized ascent step to the input image
+		src.data[:] += step_size/np.abs(g).mean() * g
 
-        if clip:
-            bias = net.transformer.mean['data']
-            src.data[:] = np.clip(src.data, -bias, 255-bias)
+		src.data[0] = np.roll(np.roll(src.data[0], -ox, -1), -oy, -2) # unshift image
+
+		if clip:
+			bias = net.transformer.mean['data']
+			src.data[:] = np.clip(src.data, -bias, 255-bias)
 
     def deepdream(self, net, base_img,  
                   clip=True, **step_params):
