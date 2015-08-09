@@ -78,7 +78,12 @@ class VideoWindow(Gtk.Window):
             Gtk.FileChooserAction.OPEN,
             (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
              Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
-
+        
+        md = self.settings.get_string('vid-search-dir')
+        
+        if len(md) > 0 and os.path.isdir(md):
+            dialog.set_current_folder(md)
+        
         self.add_filters(dialog)
 
         response = dialog.run()
@@ -86,6 +91,9 @@ class VideoWindow(Gtk.Window):
         if response == Gtk.ResponseType.OK:
             
             self.path = dialog.get_filename()
+            fname = basename(self.path)
+            nm = os.path.splitext(fname)[0]
+            self.mainWin.imageName.set_text(nm)
             
             cap = cv2.VideoCapture(self.path)
             fps = cap.get(5)
@@ -124,7 +132,8 @@ class VideoWindow(Gtk.Window):
     
     def dream(self,btn):
     
-        
+        self.mainWin.wakeBtn.show()
+         
         tree_iter = self.mainWin.outpCombo.get_active_iter()
         if tree_iter != None:
             model = self.mainWin.outpCombo.get_model()
@@ -153,7 +162,10 @@ class VideoWindow(Gtk.Window):
         self.mainWin.loop = 0
         self.mainWin.enable_buttons(False)
         while(True):
-            self.mainWin.set_notif('<span foreground="white" background="purple" weight="heavy">MACHINE IS DREAMING IN TECHNICOLOR MOVING PICTURES!...</span>')
+            if self.mainWin.wakeup:
+    	        break
+    	    
+            self.mainWin.set_notif('<span foreground="white" background="blue" weight="heavy">%s</span>'%self.mainWin.string['dreaming'])
             
             # Capture frame-by-frame
             ret, frame = cap.read()
@@ -161,18 +173,21 @@ class VideoWindow(Gtk.Window):
             if frame is None:
                 break
             
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
             src = PIL.Image.fromarray(frame)
             size = w,h
             src = src.resize(size, PIL.Image.ANTIALIAS)
             
             if self.mainWin.loop>0:
-                overl = PIL.Image.open('.temp/temp.jpg')
+                overl = PIL.Image.open(self.mainWin.tempImagePath)
                 image = PIL.Image.blend(src, overl, self.continuitySpin.get_value())
             else:
                 image = src
-            imname = '.temp/temp.jpg'
+            imname = self.mainWin.tempImagePath
+            
             image.save(imname)
-            self.mainWin.reset_image(imname)
+            self.mainWin.display_image(imname)
                 
             img = self.mainWin.prepare_image()
             
@@ -183,7 +198,8 @@ class VideoWindow(Gtk.Window):
         	    
             if outpType > 1:  
                 imgout = self.mainWin.prepare_image()
-                imgout = np.uint8(np.clip(imgout, 0, 255))  
+                imgout = np.uint8(np.clip(imgout, 0, 255)) 
+                imgout = cv2.cvtColor(imgout, cv2.COLOR_RGB2BGR) 
                 out.write(imgout)
             
             self.mainWin.loop += 1
@@ -191,8 +207,12 @@ class VideoWindow(Gtk.Window):
         if outpType > 1:
             out.release()
         cv2.destroyAllWindows()
+        
+        self.mainWin.wakeBtn.hide()
+        self.mainWin.wakeup = False
         self.mainWin.enable_buttons()
-        self.mainWin.set_notif('<span foreground="blue">Ready to dream. Counting electric sheep</span>')
+        self.mainWin.set_info("")
+        self.mainWin.set_notif('<span foreground="blue">%s</span>'%self.mainWin.string['ready'])
 
 
 

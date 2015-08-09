@@ -37,6 +37,21 @@ import cv2
 from lucidgtk.settingsWin import SettingsWindow
 from lucidgtk.VideoWindow import VideoWindow
 
+UI_INFO = """
+<ui>
+  <menubar name='MenuBar'>
+      <menu action='EditMenu'>
+        <menuitem action='ShowPrefs' />
+      </menu>
+      <menu action='HelpMenu'>
+        <menuitem action='ShowHelp' />
+        <menuitem action='ShowAbout' />
+      </menu>
+  </menubar>
+</ui>
+"""
+
+
 def objective_L2(dst):
     dst.diff[:] = dst.data
 
@@ -45,37 +60,124 @@ class DreamWindow(Gtk.Window):
     def __init__(self, *args, **kwargs):
         for key in kwargs:
             setattr(self, key, kwargs[key])
-            
-        self.settings = Gio.Settings('org.rebelweb.dreamer')
-        Gtk.Window.__init__(self, title='Lucid-GTK')
+        Gtk.Window.__init__(self, title=self.package+' | v'+self.version)
         self.set_icon_name('lucid-gtk')
-        
-        #self.set_title("%s v%s" % (self.package, self.version))
+        self.connect("delete-event", Gtk.main_quit)
+        self.settings = Gio.Settings('org.rebelweb.dreamer')
+        self.string = self.strings()
+    
+    def run(self):        
+
         self.set_border_width(10)
         self.grid = Gtk.Grid()
         self.add(self.grid)
-        
+
+        self.wakeup = False 
         self.fps = False # if not set then output videos default to settings obj. value
-        
+
         if self.initcaffe() is False:
             self.do_config_error('Caffe could not start. Please review the model and deploy file settings')
             return
-        
+
         if self.media_folders_set() is False:
             self.do_config_error('Please set the locations for deepdream images and videos to be stored')
             return
                    
         self.mode = 'image'
-        
-        
+
+        self.do_menu_bar()
+
         self.do_top_bar()
         self.do_adjustments_bar()
         self.do_info_bar()
-        self.set_image('.temp/temp.jpg')
+        self.tempImagePath = self.get_temp_im_path()
+        self.set_image(self.tempImagePath)
         self.do_bottom_bar()
         self.do_notif_bar()
-        
+
         self.show_all()
+        self.wakeBtn.hide()
+        
+    def get_lucid_icon(self, size):
+        icon_theme = Gtk.IconTheme.get_default()
+        icon_info = icon_theme.lookup_icon("lucid-gtk", size, 0)
+        return icon_info.get_filename()
+    
+    def get_resource_path(self,rel_path):
+        dir_of_py_file = os.path.dirname(__file__)
+        rel_path_to_resource = os.path.join(dir_of_py_file, rel_path)
+        abs_path_to_resource = os.path.abspath(rel_path_to_resource)
+        return abs_path_to_resource
+        
+    def do_menu_bar(self):
+		action_group = Gtk.ActionGroup("my_actions")
+		self.add_main_menu_actions(action_group)
+		uimanager = self.create_ui_manager()
+		uimanager.insert_action_group(action_group)
+		menubar = uimanager.get_widget("/MenuBar")
+		self.grid.add(menubar)
+    
+    def create_ui_manager(self):
+        uimanager = Gtk.UIManager()
+
+        uimanager.add_ui_from_string(UI_INFO)
+
+        accelgroup = uimanager.get_accel_group()
+        self.add_accel_group(accelgroup)
+        return uimanager
+            
+    def add_main_menu_actions(self, action_group):
+		
+		action_edit = Gtk.Action("EditMenu", "Edit", None, None)
+		action_group.add_action(action_edit)
+
+		action_prefs = Gtk.Action("ShowPrefs", "Preferences", None, None)
+		action_group.add_action(action_prefs)
+		action_prefs.connect("activate", self.on_settings_clicked)
+
+		action_helpmenu = Gtk.Action("HelpMenu", "Help", None, None)
+		action_group.add_action(action_helpmenu)
+
+		action_about = Gtk.Action("ShowHelp", "Help", None, None)
+		action_group.add_action(action_about)
+		action_about.connect("activate", self.on_help_clicked)
+		
+		action_about = Gtk.Action("ShowAbout", "About", None, None)
+		action_group.add_action(action_about)
+		action_about.connect("activate", self.on_about_clicked)
+		
+
+    def on_about_clicked(self, item):
+		dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "About Lucid-GTK")
+		dialog.format_secondary_text("Lucid-GTK v1.")
+		dialog.run()
+		dialog.destroy()
+        
+    def on_help_clicked(self, item):
+		dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "Lucid-GTK Help")
+		dialog.format_secondary_text("Help!!!")
+		dialog.run()
+		dialog.destroy()
+	
+    def get_temp_im_path(self):
+        imdir = self.settings.get_string('im-dir')+'/.temp'
+        impath = imdir+'/lucidgtk-temp.jpeg'
+        if os.path.isdir(imdir) == False:
+            os.makedirs(imdir)
+        if os.path.isfile(impath) == False:
+            im = PIL.Image.open(self.get_lucid_icon(256))
+            base_im = PIL.Image.new('RGB', (400,400), "white")
+            base_im.paste(im, (72, 72), im)
+            base_im.save(impath, 'jpeg')
+        return impath
+    
+    def strings(self):
+        return {
+            'ready':'Ready to dream. Counting electric sheep',
+            'dreaming':'DREAMING. DO NOT DISTURB!...',
+            'waking': 'OK, OK, I\'ll wake at the end of this dream loop!'
+        }
+        
     
     def media_folders_set(self):
         if os.path.isdir(self.settings.get_string('im-dir')) and os.path.isdir(self.settings.get_string('vid-dir')):
@@ -92,10 +194,12 @@ class DreamWindow(Gtk.Window):
         net_fn   = str(self.settings.get_string('deploy-prototxt'))
         param_fn = str(self.settings.get_string('model-file'))
         
-        # Patching model to be able to compute gradients.
-        # Note that you can also manually add "force_backward: true" line to "deploy.prototxt".
         model = caffe.io.caffe_pb2.NetParameter()
-        text_format.Merge(open(net_fn).read(), model)
+        try:
+            text_format.Merge(open(net_fn).read(), model)
+        except:
+            print 'ERROR in caffe model config'
+            return False
         model.force_backward = True
         open('tmp.prototxt', 'w').write(str(model))
         
@@ -126,7 +230,6 @@ class DreamWindow(Gtk.Window):
     
     
     def enable_buttons(self, v=True):
-        self.settingsBtn.set_sensitive(v)
         self.fBtn.set_sensitive(v)
         self.dreamBtn.set_sensitive(v)
         self.inpCombo.set_sensitive(v)
@@ -150,45 +253,46 @@ class DreamWindow(Gtk.Window):
 	    if bytesize > limit:
 	        w, h = self.get_shrink_dimensions(w, h, bytesize, limit, ch=ch)
 	        pbnew = pb.scale_simple(w, h, 3)
-	        pbnew.savev(".temp/temp.jpg","jpeg", ["quality"], ["80"])
-	        self.imagef = ".temp/temp.jpg"
+	        pbnew.savev(self.tempImagePath,"jpeg", ["quality"], ["80"])
+	        self.imagef = self.tempImagePath
 	        return pbnew
 	    return pb
     
-    def showarray(self, a, fmt='jpeg', impath='.temp/temp.jpg'):
-        a = np.uint8(np.clip(a, 0, 255))
-        image = PIL.Image.fromarray(a)
-        image.save(impath)
-        self.reset_image(impath)
+    def showarray(self, a, fmt='jpeg'):
+		impath=self.tempImagePath
+		a = np.uint8(np.clip(a, 0, 255))
+		image = PIL.Image.fromarray(a)
+		image.save(impath)
+		self.display_image(impath)
     
     def make_step(self, net, step_size=1.5, jitter=32, clip=True, objective=objective_L2):
        
-        tree_iter = self.layer_combo.get_active_iter()
-        if tree_iter != None:
-            model = self.layer_combo.get_model()
-            end = model[tree_iter][0]
-        else:
-            raise Exception("No output layer is set!")
-            return
-        
-        src = net.blobs['data'] # input image is stored in Net's 'data' blob
-        dst = net.blobs[end]
+		tree_iter = self.layer_combo.get_active_iter()
+		if tree_iter != None:
+			model = self.layer_combo.get_model()
+			end = model[tree_iter][0]
+		else:
+			raise Exception("No output layer is set!")
+			return
 
-        ox, oy = np.random.randint(-jitter, jitter+1, 2)
-        src.data[0] = np.roll(np.roll(src.data[0], ox, -1), oy, -2) # apply jitter shift
+		src = net.blobs['data'] # input image is stored in Net's 'data' blob
+		dst = net.blobs[end]
 
-        net.forward(end=end)
-        objective(dst)  # specify the optimization objective
-        net.backward(start=end)
-        g = src.diff[0]
-        # apply normalized ascent step to the input image
-        src.data[:] += step_size/np.abs(g).mean() * g
+		ox, oy = np.random.randint(-jitter, jitter+1, 2)
+		src.data[0] = np.roll(np.roll(src.data[0], ox, -1), oy, -2) # apply jitter shift
 
-        src.data[0] = np.roll(np.roll(src.data[0], -ox, -1), -oy, -2) # unshift image
+		net.forward(end=end)
+		objective(dst)  # specify the optimization objective
+		net.backward(start=end)
+		g = src.diff[0]
+		# apply normalized ascent step to the input image
+		src.data[:] += step_size/np.abs(g).mean() * g
 
-        if clip:
-            bias = net.transformer.mean['data']
-            src.data[:] = np.clip(src.data, -bias, 255-bias)
+		src.data[0] = np.roll(np.roll(src.data[0], -ox, -1), -oy, -2) # unshift image
+
+		if clip:
+			bias = net.transformer.mean['data']
+			src.data[:] = np.clip(src.data, -bias, 255-bias)
 
     def deepdream(self, net, base_img,  
                   clip=True, **step_params):
@@ -238,15 +342,10 @@ class DreamWindow(Gtk.Window):
         label.set_markup('<span size="larger">Status: </span>')
         self.notifBar.add(label)
         self.notif = Gtk.Label("Ready")
-        self.notif.set_markup('<span foreground="blue" size="larger">Ready to dream. Counting electric sheep</span>')
+        self.notif.set_markup('<span foreground="blue" size="larger">%s</span>'%self.string['ready'])
         self.notifBar.add(self.notif)
         self.grid.attach_next_to(self.notifBar, self.bottBar, Gtk.PositionType.BOTTOM, 1, 3)
         
-        self.settingsBtn = Gtk.Button('Settings')
-        self.settingsBtn.connect("clicked", self.on_settings_clicked)
-        self.settingsBtn.set_alignment(1,0)
-        self.notifBar.pack_start(self.settingsBtn, False, False, 0)
-        self.notifBar.set_child_packing(self.settingsBtn, False, True, 0, 1)
     
     def do_info_bar(self):
         self.infoBar = Gtk.Box(spacing=10)
@@ -271,8 +370,8 @@ class DreamWindow(Gtk.Window):
         self.adjBar = Gtk.Box()
         
         nloops = self.settings.get_int('n-loops')
-    	label = Gtk.Label("Loops:")
-        self.adjBar.add(label)
+    	self.loopLabel = Gtk.Label("Loops:")
+        self.adjBar.add(self.loopLabel)
         adjustment = Gtk.Adjustment(nloops, 1, 99999, 1, 0, 0)
         self.loopSpin = Gtk.SpinButton()
         self.loopSpin.set_adjustment(adjustment)
@@ -315,8 +414,8 @@ class DreamWindow(Gtk.Window):
         self.adjBar.pack_start(self.scaleSpin, False, False, 0)
         
         zoom_scale = self.settings.get_double('zoom-scale')
-        label = Gtk.Label("Zoom:")
-        self.adjBar.add(label)
+        self.zoomLabel = Gtk.Label("Zoom:")
+        self.adjBar.add(self.zoomLabel)
         adjustment = Gtk.Adjustment(zoom_scale, 0.00, 0.10, 0.01, 0, 0)
         self.zoomSpin = Gtk.SpinButton()
         self.zoomSpin.configure(adjustment,0.01,2)
@@ -326,8 +425,8 @@ class DreamWindow(Gtk.Window):
         self.adjBar.pack_start(self.zoomSpin, False, False, 0)
         
         deg_val = self.settings.get_double('rot-deg')
-        label = Gtk.Label("Rotation:")
-        self.adjBar.add(label)
+        self.degLabel = Gtk.Label("Rotation:")
+        self.adjBar.add(self.degLabel)
         adjustment = Gtk.Adjustment(deg_val, -10.00, 10.00, 0.10, 0, 0)
         self.degSpin = Gtk.SpinButton()
         self.degSpin.configure(adjustment,0.10,2)
@@ -345,16 +444,24 @@ class DreamWindow(Gtk.Window):
             v = model[tree_iter][0]
             if v==1:
                 self.dreamBtn.show()
+                self.loopSpin.show()
+                self.zoomSpin.show()
+                self.degSpin.show()
+                self.zoomLabel.show()
+                self.degLabel.show()
+                self.loopLabel.show()
             elif v==2:
                 self.dreamBtn.hide()
+                self.loopSpin.hide()
+                self.zoomSpin.hide()
+                self.degSpin.hide()
+                self.zoomLabel.hide()
+                self.degLabel.hide()
+                self.loopLabel.hide()
+                
     
     def do_top_bar(self):
     	self.topBar = Gtk.Box()
-        #logo = Gtk.Image()
-        #pb = Pixbuf.new_from_file('src/lucidgtk/lucid-logo.png')
-        #logo.set_from_pixbuf(pb)
-        #self.topBar.pack_start(logo, False, False, 0)
-        
     	
         label = Gtk.Label("Input type:")
         self.topBar.add(label)
@@ -373,8 +480,12 @@ class DreamWindow(Gtk.Window):
         self.fBtn.connect("clicked", self.on_fBtn_clicked)
         self.topBar.pack_start(self.fBtn, False, False, 0)
         
-        self.dreamBtn = Gtk.Button('START DREAMING')
+        self.wakeBtn = Gtk.Button('WAKE UP!')
+        self.wakeBtn.connect("clicked", self.on_wake_clicked)
+        self.topBar.pack_start(self.wakeBtn, False, False, 0)
+        self.topBar.set_child_packing(self.wakeBtn, False, True, 0, 1)
         
+        self.dreamBtn = Gtk.Button('START DREAMING')
         self.dreamBtn.connect("clicked", self.on_dream_clicked)
         self.topBar.pack_start(self.dreamBtn, False, False, 0)
         self.topBar.set_child_packing(self.dreamBtn, False, True, 0, 1)
@@ -383,6 +494,12 @@ class DreamWindow(Gtk.Window):
         
         self.grid.attach(self.topBar,1,1,2,1)
         
+    def on_wake_clicked(self, btn):
+		self.set_notif('<span foreground="black" background="orange" weight="heavy">%s</span>'%self.string['waking'])
+		while Gtk.events_pending():
+			Gtk.main_iteration_do(True)
+		self.wakeup = True
+    
     def set_octv_val(self, btn):
         self.settings.set_int('n-octaves',btn.get_value())
     
@@ -425,7 +542,6 @@ class DreamWindow(Gtk.Window):
         outp_store.append([2, ".AVI"])
         outp_store.append([3, ".JPG & .AVI"])
         self.outpCombo = Gtk.ComboBox.new_with_model(outp_store)
-        #inp_combo.connect("changed", self.on_inp_combo_changed)
         renderer_text = Gtk.CellRendererText()
         self.outpCombo.pack_start(renderer_text, True)
         self.outpCombo.add_attribute(renderer_text, "text", 1)
@@ -450,7 +566,7 @@ class DreamWindow(Gtk.Window):
         self.imContainer.add(self.im)
         self.imContainer.set_size(self.pb.get_width(),self.pb.get_height())
     
-    def reset_image(self, im):
+    def display_image(self, im):
     	self.imagef = im
     	pb = Pixbuf.new_from_file(im)
         pb = self.check_im_size(pb)
@@ -458,11 +574,10 @@ class DreamWindow(Gtk.Window):
     	self.im.set_from_pixbuf(pb)
         
     def save_image(self,a=0):
-    	image = PIL.Image.open('.temp/temp.jpg')
+    	image = PIL.Image.open(self.tempImagePath)
     	fp = self.make_new_fname()
     	image.save(fp, optimize=True)
-    	self.set_notif('<span foreground="black" background="yellow">Current dream state saved to <span foreground="blue">'+fp+'</span></span>')
-    
+    	
     def make_new_fname(self, dirSetting='im-dir', extension='.jpg'):
         fp = self.settings.get_string(dirSetting)+'/'+self.imageName.get_text()+extension
         if os.path.isfile(fp):
@@ -487,8 +602,8 @@ class DreamWindow(Gtk.Window):
     def on_dream_clicked(self, button):
         self.mode = 'image'
         self.enable_buttons(False)
-        self.set_notif('<span foreground="white" background="red" weight="heavy">COMPUTER IS DREAMING. DO NOT DISTURB!...</span>')
-            
+        self.set_notif('<span foreground="white" background="blue" weight="heavy">%s</span>'%self.string['dreaming'])
+        self.wakeBtn.show()    
         while Gtk.events_pending():
             Gtk.main_iteration_do(True)
         
@@ -499,8 +614,16 @@ class DreamWindow(Gtk.Window):
             
         if outpType > 1:
             vidOut = self.init_outp_video()
+            # add the first unprocessed frame
+            imgout = self.prepare_image()
+            imgout = np.uint8(np.clip(imgout, 0, 255))
+            imgout = cv2.cvtColor(imgout, cv2.COLOR_BGR2RGB)
+            vidOut.write(imgout)
         
     	for i in xrange(int(self.loopSpin.get_value())):
+    	    if self.wakeup:
+    	        break
+    	    
     	    self.loop = i
             
             img = self.prepare_image()
@@ -519,31 +642,34 @@ class DreamWindow(Gtk.Window):
             if outpType > 1:
                 imgout = self.prepare_image()
                 imgout = np.uint8(np.clip(imgout, 0, 255))
+                imgout = cv2.cvtColor(imgout, cv2.COLOR_BGR2RGB)
                 vidOut.write(imgout)
                 
             if outpType == 1 or outpType == 3:
         	    self.save_image()
 
         self.set_info("")
-        self.set_notif('<span foreground="blue">Ready to dream. Counting electric sheep</span>') 
+        self.set_notif('<span foreground="blue">%s</span>'%self.string['ready']) 
         
         if outpType > 1:
             vidOut.release()
             cv2.destroyAllWindows()   
-                
+        self.wakeup = False        
+        self.wakeBtn.hide()
         self.enable_buttons()
 
     def on_fBtn_clicked(self, combo):
+        t = self.get_input_mode()
+        if t is 1:
+            self.on_fselect_clicked()
+        elif t is 2:
+            self.on_vidbtn_clicked()
+            
+    def get_input_mode(self):
         tree_iter = self.inpCombo.get_active_iter()
         if tree_iter != None:
             model = self.inpCombo.get_model()
-            t = model[tree_iter][0]
-            if t is 1:
-                self.on_fselect_clicked()
-            elif t is 2:
-                self.on_vidbtn_clicked()
-            
-        
+            return model[tree_iter][0]
     
     
     def on_fselect_clicked(self):
@@ -553,12 +679,17 @@ class DreamWindow(Gtk.Window):
              Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
 
         self.add_filters(dialog)
-
+        
+        md = self.settings.get_string('im-search-dir')
+        
+        if len(md) > 0 and os.path.isdir(md):
+            dialog.set_current_folder(md) 
+        
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
         
             pname = dialog.get_filename()
-            self.reset_image(pname)
+            self.display_image(pname)
             fname = basename(pname)
             nm = os.path.splitext(fname)[0]
             self.imageName.set_text(nm)
@@ -597,7 +728,4 @@ class DreamWindow(Gtk.Window):
     	return np.float32(PIL.Image.open(self.imagef))
     	
 
-win = DreamWindow()
-win.connect("delete-event", Gtk.main_quit)
-win.show_all()
-Gtk.main()
+

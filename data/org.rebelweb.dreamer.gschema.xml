@@ -1,8 +1,16 @@
 <schemalist>
     <schema id="org.rebelweb.dreamer" path="/org/rebelweb/dreamer/">
     
+    <key name='models-dir' type='s'>
+      <default>''</default>
+      <summary>Path to caffe models directory</summary>
+      <description>
+        Only used for defaul location of file search dialog
+      </description>
+    </key>
+    
     <key name='model-file' type='s'>
-      <default>'bvlc_googlenet.caffemodel'</default>
+      <default>''</default>
       <summary>Path to model file</summary>
       <description>
         Name of the actual model file. eg. /home/user/caffe/models/[model-path]/[model-file]
@@ -10,7 +18,7 @@
     </key>
     
     <key name='deploy-prototxt' type='s'>
-      <default>'deploy.prototxt'</default>
+      <default>''</default>
       <summary>Name of the deploy file</summary>
       <description>
         Each model has a deploy .prototxt file which should be set accordingly here. eg. /home/user/caffe/models/[model-path]/[deploy-prototxt]
@@ -38,6 +46,22 @@
       <summary>Output videos folder</summary>
       <description>
         Where to save generated videos
+      </description>
+    </key>
+    
+    <key name='im-search-dir' type='s'>
+      <default>''</default>
+      <summary>Input images folder</summary>
+      <description>
+        Default location to search for images
+      </description>
+    </key>
+    
+    <key name='vid-search-dir' type='s'>
+      <default>''</default>
+      <summary>Input videos folder</summary>
+      <description>
+        Default location to search for video files
       </description>
     </key>
     
