@@ -37,6 +37,21 @@ import cv2
 from lucidgtk.settingsWin import SettingsWindow
 from lucidgtk.VideoWindow import VideoWindow
 
+UI_INFO = """
+<ui>
+  <menubar name='MenuBar'>
+      <menu action='EditMenu'>
+        <menuitem action='ShowPrefs' />
+      </menu>
+      <menu action='HelpMenu'>
+        <menuitem action='ShowHelp' />
+        <menuitem action='ShowAbout' />
+      </menu>
+  </menubar>
+</ui>
+"""
+
+
 def objective_L2(dst):
     dst.diff[:] = dst.data
 
@@ -52,35 +67,64 @@ class DreamWindow(Gtk.Window):
         self.string = self.strings()
     
     def run(self):        
-        
-        self.set_border_width(10)
-        self.grid = Gtk.Grid()
-        self.add(self.grid)
-        
-        self.wakeup = False 
-        self.fps = False # if not set then output videos default to settings obj. value
-        
-        if self.initcaffe() is False:
-            self.do_config_error('Caffe could not start. Please review the model and deploy file settings')
-            return
-        
-        if self.media_folders_set() is False:
-            self.do_config_error('Please set the locations for deepdream images and videos to be stored')
-            return
-                   
-        self.mode = 'image'
-        
-        self.do_top_bar()
-        self.do_adjustments_bar()
-        self.do_info_bar()
-        self.tempImagePath = self.get_temp_im_path()
-        self.set_image(self.tempImagePath)
-        self.do_bottom_bar()
-        self.do_notif_bar()
-        
-        self.show_all()
-        self.wakeBtn.hide()
 
+		self.set_border_width(10)
+		self.grid = Gtk.Grid()
+		self.add(self.grid)
+
+		self.wakeup = False 
+		self.fps = False # if not set then output videos default to settings obj. value
+
+		if self.initcaffe() is False:
+			self.do_config_error('Caffe could not start. Please review the model and deploy file settings')
+			return
+
+		if self.media_folders_set() is False:
+			self.do_config_error('Please set the locations for deepdream images and videos to be stored')
+			return
+				   
+		self.mode = 'image'
+
+		self.do_menu_bar()
+
+		self.do_top_bar()
+		self.do_adjustments_bar()
+		self.do_info_bar()
+		self.tempImagePath = self.get_temp_im_path()
+		self.set_image(self.tempImagePath)
+		self.do_bottom_bar()
+		self.do_notif_bar()
+
+		self.show_all()
+		self.wakeBtn.hide()
+
+    def do_menu_bar(self):
+		action_group = Gtk.ActionGroup("my_actions")
+		self.add_main_menu_actions(action_group)
+		uimanager = self.create_ui_manager()
+		uimanager.insert_action_group(action_group)
+		menubar = uimanager.get_widget("/MenuBar")
+		self.grid.add(menubar)
+    
+    def create_ui_manager(self):
+        uimanager = Gtk.UIManager()
+
+        uimanager.add_ui_from_string(UI_INFO)
+
+        accelgroup = uimanager.get_accel_group()
+        self.add_accel_group(accelgroup)
+        return uimanager
+            
+    def add_main_menu_actions(self, action_group):
+		
+		action_edit = Gtk.Action("EditMenu", "Edit", None, None)
+		action_group.add_action(action_edit)
+		
+		action_prefs = Gtk.Action("ShowPrefs", "Preferences", None, None)
+		action_group.add_action(action_prefs)
+		action_prefs.connect("activate", self.on_settings_clicked)
+        
+	
     def get_temp_im_path(self):
 		imdir = self.settings.get_string('im-dir')+'/.temp'
 		impath = imdir+'/lucidgtk-temp.jpeg'
@@ -95,7 +139,8 @@ class DreamWindow(Gtk.Window):
     def strings(self):
         return {
             'ready':'Ready to dream. Counting electric sheep',
-            'dreaming':'DREAMING. DO NOT DISTURB!...'
+            'dreaming':'DREAMING. DO NOT DISTURB!...',
+            'waking': 'OK, OK, I\'ll wake at the end of this dream loop!'
         }
         
     
@@ -172,8 +217,8 @@ class DreamWindow(Gtk.Window):
 	    if bytesize > limit:
 	        w, h = self.get_shrink_dimensions(w, h, bytesize, limit, ch=ch)
 	        pbnew = pb.scale_simple(w, h, 3)
-	        pbnew.savev(".temp/temp.jpg","jpeg", ["quality"], ["80"])
-	        self.imagef = ".temp/temp.jpg"
+	        pbnew.savev(self.tempImagePath,"jpeg", ["quality"], ["80"])
+	        self.imagef = self.tempImagePath
 	        return pbnew
 	    return pb
     
@@ -419,7 +464,10 @@ class DreamWindow(Gtk.Window):
         self.grid.attach(self.topBar,1,1,2,1)
         
     def on_wake_clicked(self, btn):
-        self.wakeup = True
+		self.set_notif('<span foreground="black" background="orange" weight="heavy">%s</span>'%self.string['waking'])
+		while Gtk.events_pending():
+			Gtk.main_iteration_do(True)
+		self.wakeup = True
     
     def set_octv_val(self, btn):
         self.settings.set_int('n-octaves',btn.get_value())
