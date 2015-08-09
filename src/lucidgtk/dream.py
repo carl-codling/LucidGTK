@@ -119,11 +119,34 @@ class DreamWindow(Gtk.Window):
 		
 		action_edit = Gtk.Action("EditMenu", "Edit", None, None)
 		action_group.add_action(action_edit)
-		
+
 		action_prefs = Gtk.Action("ShowPrefs", "Preferences", None, None)
 		action_group.add_action(action_prefs)
 		action_prefs.connect("activate", self.on_settings_clicked)
+
+		action_helpmenu = Gtk.Action("HelpMenu", "Help", None, None)
+		action_group.add_action(action_helpmenu)
+
+		action_about = Gtk.Action("ShowHelp", "Help", None, None)
+		action_group.add_action(action_about)
+		action_about.connect("activate", self.on_help_clicked)
+		
+		action_about = Gtk.Action("ShowAbout", "About", None, None)
+		action_group.add_action(action_about)
+		action_about.connect("activate", self.on_about_clicked)
+		
+
+    def on_about_clicked(self, item):
+		dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "About Lucid-GTK")
+		dialog.format_secondary_text("Lucid-GTK v1.")
+		dialog.run()
+		dialog.destroy()
         
+    def on_help_clicked(self, item):
+		dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "Lucid-GTK Help")
+		dialog.format_secondary_text("Help!!!")
+		dialog.run()
+		dialog.destroy()
 	
     def get_temp_im_path(self):
 		imdir = self.settings.get_string('im-dir')+'/.temp'
@@ -310,11 +333,6 @@ class DreamWindow(Gtk.Window):
         self.notifBar.add(self.notif)
         self.grid.attach_next_to(self.notifBar, self.bottBar, Gtk.PositionType.BOTTOM, 1, 3)
         
-        self.settingsBtn = Gtk.Button('Settings')
-        self.settingsBtn.connect("clicked", self.on_settings_clicked)
-        self.settingsBtn.set_alignment(1,0)
-        self.notifBar.pack_start(self.settingsBtn, False, False, 0)
-        self.notifBar.set_child_packing(self.settingsBtn, False, True, 0, 1)
     
     def do_info_bar(self):
         self.infoBar = Gtk.Box(spacing=10)
