@@ -212,7 +212,7 @@ class SettingsWindow(Gtk.Window):
         self.file_chooser(self.modelf, 'model-file', folder)
     
     def on_modelDirBtn_clicked(self, btn):
-        self.folder_chooser(self.modeldir, 'models-dir')
+        self.folder_chooser(self.modeldir, 'models-dir', False)
     
        
     def file_chooser(self, target, key, folder):
