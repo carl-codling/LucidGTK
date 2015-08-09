@@ -194,10 +194,12 @@ class DreamWindow(Gtk.Window):
         net_fn   = str(self.settings.get_string('deploy-prototxt'))
         param_fn = str(self.settings.get_string('model-file'))
         
-        # Patching model to be able to compute gradients.
-        # Note that you can also manually add "force_backward: true" line to "deploy.prototxt".
         model = caffe.io.caffe_pb2.NetParameter()
-        text_format.Merge(open(net_fn).read(), model)
+        try:
+            text_format.Merge(open(net_fn).read(), model)
+        except:
+            print 'ERROR in caffe model config'
+            return False
         model.force_backward = True
         open('tmp.prototxt', 'w').write(str(model))
         
