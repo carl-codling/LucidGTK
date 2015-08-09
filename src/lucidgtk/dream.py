@@ -166,8 +166,9 @@ class DreamWindow(Gtk.Window):
             os.makedirs(imdir)
         if os.path.isfile(impath) == False:
             im = PIL.Image.open(self.get_lucid_icon(256))
-            
-            im.save(impath, 'jpeg')
+            base_im = PIL.Image.new('RGB', (400,400), "white")
+            base_im.paste(im, (72, 72), im)
+            base_im.save(impath, 'jpeg')
         return impath
     
     def strings(self):
