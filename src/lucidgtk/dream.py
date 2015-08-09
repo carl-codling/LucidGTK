@@ -68,36 +68,47 @@ class DreamWindow(Gtk.Window):
     
     def run(self):        
 
-		self.set_border_width(10)
-		self.grid = Gtk.Grid()
-		self.add(self.grid)
+        self.set_border_width(10)
+        self.grid = Gtk.Grid()
+        self.add(self.grid)
 
-		self.wakeup = False 
-		self.fps = False # if not set then output videos default to settings obj. value
+        self.wakeup = False 
+        self.fps = False # if not set then output videos default to settings obj. value
 
-		if self.initcaffe() is False:
-			self.do_config_error('Caffe could not start. Please review the model and deploy file settings')
-			return
+        if self.initcaffe() is False:
+            self.do_config_error('Caffe could not start. Please review the model and deploy file settings')
+            return
 
-		if self.media_folders_set() is False:
-			self.do_config_error('Please set the locations for deepdream images and videos to be stored')
-			return
-				   
-		self.mode = 'image'
+        if self.media_folders_set() is False:
+            self.do_config_error('Please set the locations for deepdream images and videos to be stored')
+            return
+                   
+        self.mode = 'image'
 
-		self.do_menu_bar()
+        self.do_menu_bar()
 
-		self.do_top_bar()
-		self.do_adjustments_bar()
-		self.do_info_bar()
-		self.tempImagePath = self.get_temp_im_path()
-		self.set_image(self.tempImagePath)
-		self.do_bottom_bar()
-		self.do_notif_bar()
+        self.do_top_bar()
+        self.do_adjustments_bar()
+        self.do_info_bar()
+        self.tempImagePath = self.get_temp_im_path()
+        self.set_image(self.tempImagePath)
+        self.do_bottom_bar()
+        self.do_notif_bar()
 
-		self.show_all()
-		self.wakeBtn.hide()
-
+        self.show_all()
+        self.wakeBtn.hide()
+        
+    def get_lucid_icon(self, size):
+        icon_theme = Gtk.IconTheme.get_default()
+        icon_info = icon_theme.lookup_icon("lucid-gtk", size, 0)
+        return icon_info.get_filename()
+    
+    def get_resource_path(self,rel_path):
+        dir_of_py_file = os.path.dirname(__file__)
+        rel_path_to_resource = os.path.join(dir_of_py_file, rel_path)
+        abs_path_to_resource = os.path.abspath(rel_path_to_resource)
+        return abs_path_to_resource
+        
     def do_menu_bar(self):
 		action_group = Gtk.ActionGroup("my_actions")
 		self.add_main_menu_actions(action_group)
@@ -149,15 +160,15 @@ class DreamWindow(Gtk.Window):
 		dialog.destroy()
 	
     def get_temp_im_path(self):
-		imdir = self.settings.get_string('im-dir')+'/.temp'
-		impath = imdir+'/lucidgtk-temp.jpeg'
-		if os.path.isdir(imdir) == False:
-			os.makedirs(imdir)
-		if os.path.isfile(impath) == False:
-			im = PIL.Image.new('RGB', (100,100), 'white')
-			
-			im.save(impath, 'jpeg')
-		return impath
+        imdir = self.settings.get_string('im-dir')+'/.temp'
+        impath = imdir+'/lucidgtk-temp.jpeg'
+        if os.path.isdir(imdir) == False:
+            os.makedirs(imdir)
+        if os.path.isfile(impath) == False:
+            im = PIL.Image.open(self.get_lucid_icon(256))
+            
+            im.save(impath, 'jpeg')
+        return impath
     
     def strings(self):
         return {
