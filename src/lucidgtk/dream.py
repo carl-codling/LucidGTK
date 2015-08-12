@@ -148,14 +148,28 @@ class DreamWindow(Gtk.Window):
 		
 
     def on_about_clicked(self, item):
-		dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "About Lucid-GTK")
-		dialog.format_secondary_text("Lucid-GTK v1.")
-		dialog.run()
-		dialog.destroy()
+        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "About Lucid-GTK")
+        box = dialog.get_content_area()
+        label = Gtk.Label()
+        label.set_markup('<span weight="heavy">'+self.package+'</span>')
+        box.add(label)
+        label = Gtk.Label()
+        label.set_markup('<span weight="light">'+self.version+'</span>')
+        box.add(label)
+        im = Gtk.Image()
+        pb = Pixbuf.new_from_file(self.get_lucid_icon(256))
+        im.set_from_pixbuf(pb)
+        box.add(im)
+        label = Gtk.Label('Author: Carl Codling | lucid@rebelweb.co.uk')
+        box.add(label)
+        
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
         
     def on_help_clicked(self, item):
 		dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "Lucid-GTK Help")
-		dialog.format_secondary_text("Help!!!")
+		dialog.format_secondary_text("Lucid-GTK is currently in Beta and documentation is lacking, a usage screencast can be found at http://rebelweb.co.uk/lucid-gtk or for bug reporting you can create an 'issue' at https://github.com/carl-codling/LucidGTK/issues")
 		dialog.run()
 		dialog.destroy()
 	
@@ -215,13 +229,15 @@ class DreamWindow(Gtk.Window):
         l = list(self.net._layer_names)
         blobs = list(self.net.blobs)
         layers = [val for val in l if val in blobs]
-        #layers = list(set(l).intersection(blobs))
+        
+        # Remove googlenet layers that are causing core dumped crash
+        bad_layers = ['pool5/7x7_s1','loss3/classifier','prob']
         
         for layer in layers:
-            layer_store.append([layer])
+            if layer not in bad_layers:
+                layer_store.append([layer])
 
         self.layer_combo = Gtk.ComboBox.new_with_model(layer_store)
-        #layer_combo.connect("changed", self.on_country_combo_changed)
         renderer_text = Gtk.CellRendererText()
         self.layer_combo.pack_start(renderer_text, True)
         self.layer_combo.add_attribute(renderer_text, "text", 0)
