@@ -33,11 +33,10 @@ from gi.repository.GdkPixbuf import Pixbuf
 
 import json
 import cv2
-import collections
 
 from lucidgtk.settingsWin import SettingsWindow
 from lucidgtk.VideoWindow import VideoWindow
-from lucidgtk.sequencerWindow import SequencerWindow
+from lucidgtk.sequencerWindow import Sequencer, SequencerWindow
 
 UI_INFO = """
 <ui>
@@ -94,7 +93,8 @@ class DreamWindow(Gtk.Window):
             self.do_config_error('Please set the locations for deepdream images and videos to be stored')
             return
         
-        self.sequences = self.get_sequences()           
+        self._Sequencer = Sequencer(self)
+        self.sequences = self._Sequencer.get_sequences()           
         self.sequence = None           
         self.mode = 'image'
 
@@ -214,14 +214,6 @@ class DreamWindow(Gtk.Window):
             'dreaming':'DREAMING. DO NOT DISTURB!...',
             'waking': 'OK, OK, I\'ll wake at the end of this dream loop!'
         }
-    
-    def get_sequences(self):
-        jf = self.settings.get_string('proj-dir')+'/.lucid.seq.json'
-        if os.path.isfile(jf):
-            d = open(jf,'r').read()
-            return json.loads(d)
-        else:
-            return {}
     
     def media_folders_set(self):
         if os.path.isdir(self.settings.get_string('im-dir')) and os.path.isdir(self.settings.get_string('vid-dir')):
@@ -541,7 +533,7 @@ class DreamWindow(Gtk.Window):
         self.topBar.set_child_packing(self.wakeBtn, False, True, 0, 1)
         
         self.seq_store = Gtk.ListStore(str)
-        self.set_seq_liststore(self.seq_store)
+        self._Sequencer.set_seq_liststore(self.seq_store)
         
         self.seqCombo = Gtk.ComboBox.new_with_model(self.seq_store)
         renderer_text = Gtk.CellRendererText()
@@ -550,7 +542,7 @@ class DreamWindow(Gtk.Window):
         self.seqCombo.set_active(0)
         self.topBar.pack_start(self.seqCombo, False, False, True)
         self.topBar.set_child_packing(self.seqCombo, False, True, 0, 1)
-        self.seqCombo.connect("changed", self.set_sequence)
+        self.seqCombo.connect("changed", self._Sequencer.set_sequence)
         
         
         self.dreamBtn = Gtk.Button('START DREAMING')
@@ -562,67 +554,7 @@ class DreamWindow(Gtk.Window):
         
         self.grid.attach(self.topBar,1,1,2,1)
     
-    def set_seq_liststore(self, store):
-        store.clear()
-        store.append(['On the fly'])
-        for k in self.sequences.iterkeys():
-            store.append([k])
-        store.append(['Add New Sequence'])
-    
-    def set_sequence(self, combo):
-        tree_iter = combo.get_active_iter()
-        if tree_iter != None:
-            model = combo.get_model()
-            seq = model[tree_iter][0]
-            if seq == 'On the fly':
-                self.sequence = None
-            elif seq == 'Add New Sequence':
-                self.sequencer_win(False)
-                self.sequence = None
-                self.seqCombo.set_active(0)
-            else:
-                self.sequence = {}
-                self.build_sequence(self.sequences[seq])
-        
-    
-    def get_seq_key(self,key):
-        try:
-            return int(key)
-        except ValueError:
-            return key
-    
-    def build_sequence(self,seq):
-        seq = collections.OrderedDict(sorted(seq.items(), key=lambda t: self.get_seq_key(t[0])))
-        self.sequence = seq.copy()
-        i = 1
-        zoom_trans = '0'
-        deg_trans = '0'
-        last_frame = None
-        for frame in seq.iterkeys():
-            if last_frame != None:
-                if int(zoom_trans) + int(deg_trans) > 0:
-                    self.build_seq_trans(seq, frame, last_frame, zoom_trans, deg_trans)
-            zoom_trans = seq[frame]['zoom-trans']
-            deg_trans = seq[frame]['deg-trans']
-            last_frame = frame
-    
-    def build_seq_trans(self, seq, f, lf, zt, dt):
-        zt_start_val = float(seq[lf]['zoom'])
-        zt_end_val = float(seq[f]['zoom'])
-        zt_span = zt_end_val - zt_start_val
-        deg_start_val = float(seq[lf]['deg'])
-        deg_end_val = float(seq[f]['deg'])
-        deg_span = deg_end_val - deg_start_val
-        frame_span = int(f) - int(lf)
-        for i in range(int(lf)+1,int(f)):
-            self.sequence[str(i)] = seq[lf].copy()
-            pos = i-int(lf)
-            if zt_span>0 or zt_span<0:
-                self.sequence[str(i)]['zoom'] = seq[lf]['zoom'] + (pos*(zt_span/frame_span))
-                print seq[lf]['zoom'] + (pos*(zt_span/frame_span))
-            if deg_span>0 or deg_span<0:
-                self.sequence[str(i)]['deg'] = seq[lf]['deg'] + (pos*(deg_span/frame_span))
-        
+      
     
     def on_wake_clicked(self, btn):
 		self.set_notif('<span foreground="black" background="orange" weight="heavy">%s</span>'%self.string['waking'])
@@ -755,7 +687,7 @@ class DreamWindow(Gtk.Window):
     	        break
     	    
             if self.sequence != None and str(i+1) in self.sequence:
-                self.do_seq_adjust(str(i+1))
+                self._Sequencer.do_seq_adjust(str(i+1))
             
     	    self.loop = i
             
@@ -790,13 +722,6 @@ class DreamWindow(Gtk.Window):
         self.wakeup = False        
         self.wakeBtn.hide()
         self.enable_buttons()
-
-    def do_seq_adjust(self, i):
-        self.iterSpin.set_value(self.sequence[i]['iters'])
-        self.octaveSpin.set_value(self.sequence[i]['octaves'])
-        self.scaleSpin.set_value(self.sequence[i]['scale'])
-        self.zoomSpin.set_value(self.sequence[i]['zoom'])
-        self.degSpin.set_value(self.sequence[i]['deg'])
         
     
     def on_fBtn_clicked(self, combo):

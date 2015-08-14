@@ -18,6 +18,7 @@
 from gi.repository import Gtk, Gio, GLib
 import json
 import os
+import collections
 
 class SequencerWindow(Gtk.Window):
 
@@ -180,7 +181,15 @@ class SequencerWindow(Gtk.Window):
 		return False
 	
 	def display_adjustments(self):
-		
+		lastEntry = {
+			'iters':None,
+			'octaves':None,
+			'scale':None,
+			'zoom':None,
+			'deg':None,
+			'zoom-trans':None,
+			'deg-trans':None
+			}
 		S = self.unsaved
 		for w in self.vs.get_children():
 			w.destroy()
@@ -190,31 +199,46 @@ class SequencerWindow(Gtk.Window):
 			label = Gtk.Label('@ FRAME '+str(int(key))+' :: ')
 			box.add(label)
 			
-			label = Gtk.Label('iters: '+str(S[key]['iters'])+' | ')
-			box.add(label)
+			if S[key]['iters'] != lastEntry['iters']:
+				label = Gtk.Label('iters: '+str(S[key]['iters'])+' | ')
+				box.add(label)
+				lastEntry['iters'] = S[key]['iters']
 			
-			label = Gtk.Label('octaves: '+str(S[key]['octaves'])+' | ')
-			box.add(label)
+			if S[key]['octaves'] != lastEntry['octaves']:
+				label = Gtk.Label('octaves: '+str(S[key]['octaves'])+' | ')
+				box.add(label)
+				lastEntry['octaves'] = S[key]['octaves']
 			
-			label = Gtk.Label('scale: '+str(S[key]['scale'])+' | ')
-			box.add(label)
+			if S[key]['scale'] != lastEntry['scale']:
+				label = Gtk.Label('scale: '+str(S[key]['scale'])+' | ')
+				box.add(label)
+				lastEntry['scale'] = S[key]['scale']
 			
-			label = Gtk.Label('zoom: '+str(S[key]['zoom'])+' | ')
-			box.add(label)
+			if S[key]['zoom'] != lastEntry['zoom']:
+				label = Gtk.Label('zoom: '+str(S[key]['zoom'])+' | ')
+				box.add(label)
+				lastEntry['zoom'] = S[key]['zoom']
 			
-			label = Gtk.Label('rotation: '+str(round(S[key]['deg'],3))+' | ')
-			box.add(label)
+			if S[key]['deg'] != lastEntry['deg']:
+				label = Gtk.Label('rotation: '+str(round(S[key]['deg'],3))+' | ')
+				box.add(label)
+				lastEntry['deg'] = S[key]['deg']
 			
 			self.vs.add(box)
 			self.vs.set_child_packing(box,False,False,5,0)	
 			
 			box = Gtk.Box()
 			
-			label = Gtk.Label('zoom transition: '+str(S[key]['zoom-trans'])+' | ')
-			box.add(label)
+			if S[key]['zoom-trans'] != lastEntry['zoom-trans']:
+				label = Gtk.Label('zoom transition: '+str(S[key]['zoom-trans'])+' | ')
+				box.add(label)
+				lastEntry['zoom-trans'] = S[key]['zoom-trans']
 			
-			label = Gtk.Label('rotation transition: '+str(S[key]['deg-trans'])+' | ')
-			box.add(label)
+			if S[key]['deg-trans'] != lastEntry['deg-trans']:
+				label = Gtk.Label('rotation transition: '+str(S[key]['deg-trans'])+' | ')
+				box.add(label)
+				lastEntry['deg-trans'] = S[key]['deg-trans']
+				
 			self.vs.add(box)
 			self.vs.set_child_packing(box,False,False,5,0)	
 			
@@ -242,3 +266,83 @@ class SequencerWindow(Gtk.Window):
 		self.mainWin.set_seq_liststore(self.mainWin.seq_store)
 		self.mainWin.seqCombo.set_active(0)
 		self.destroy()
+
+class Sequencer():
+	
+	def __init__(self, mainWin):
+		self.mainWin = mainWin
+
+	def get_sequences(self):
+		jf = self.mainWin.settings.get_string('proj-dir')+'/.lucid.seq.json'
+		if os.path.isfile(jf):
+			d = open(jf,'r').read()
+			return json.loads(d)
+		else:
+			return {}
+	
+	def set_seq_liststore(self, store):
+		store.clear()
+		store.append(['On the fly'])
+		for k in self.mainWin.sequences.iterkeys():
+			store.append([k])
+		store.append(['Add New Sequence'])
+
+	def set_sequence(self, combo):
+		tree_iter = combo.get_active_iter()
+		if tree_iter != None:
+			model = combo.get_model()
+			seq = model[tree_iter][0]
+			if seq == 'On the fly':
+				self.mainWin.sequence = None
+			elif seq == 'Add New Sequence':
+				self.mainWin.sequencer_win(False)
+				self.mainWin.sequence = None
+				self.mainWin.seqCombo.set_active(0)
+			else:
+				self.build_sequence(self.mainWin.sequences[seq])
+        
+    
+	def get_seq_key(self,key):
+		try:
+			return int(key)
+		except ValueError:
+			return key
+
+	def build_sequence(self,seq):
+		seq = collections.OrderedDict(sorted(seq.items(), key=lambda t: self.get_seq_key(t[0])))
+		self.mainWin.sequence = seq.copy()
+		i = 1
+		zoom_trans = '0'
+		deg_trans = '0'
+		last_frame = None
+		for frame in seq.iterkeys():
+			if last_frame != None:
+				if int(zoom_trans) + int(deg_trans) > 0:
+					self.build_seq_trans(seq, frame, last_frame, zoom_trans, deg_trans)
+			zoom_trans = seq[frame]['zoom-trans']
+			deg_trans = seq[frame]['deg-trans']
+			last_frame = frame
+
+	def build_seq_trans(self, seq, f, lf, zt, dt):
+		zt_start_val = float(seq[lf]['zoom'])
+		zt_end_val = float(seq[f]['zoom'])
+		zt_span = zt_end_val - zt_start_val
+		deg_start_val = float(seq[lf]['deg'])
+		deg_end_val = float(seq[f]['deg'])
+		deg_span = deg_end_val - deg_start_val
+		frame_span = int(f) - int(lf)
+		for i in range(int(lf)+1,int(f)):
+			self.mainWin.sequence[str(i)] = seq[lf].copy()
+			pos = i-int(lf)
+			if zt_span>0 or zt_span<0:
+				self.mainWin.sequence[str(i)]['zoom'] = seq[lf]['zoom'] + (pos*(zt_span/frame_span))
+				print seq[lf]['zoom'] + (pos*(zt_span/frame_span))
+			if deg_span>0 or deg_span<0:
+				self.mainWin.sequence[str(i)]['deg'] = seq[lf]['deg'] + (pos*(deg_span/frame_span))
+
+    def do_seq_adjust(self, i):
+        self.iterSpin.set_value(self.sequence[i]['iters'])
+        self.octaveSpin.set_value(self.sequence[i]['octaves'])
+        self.scaleSpin.set_value(self.sequence[i]['scale'])
+        self.zoomSpin.set_value(self.sequence[i]['zoom'])
+        self.degSpin.set_value(self.sequence[i]['deg'])
