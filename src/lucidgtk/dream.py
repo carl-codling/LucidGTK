@@ -33,9 +33,11 @@ from gi.repository.GdkPixbuf import Pixbuf
 
 import json
 import cv2
+import collections
 
 from lucidgtk.settingsWin import SettingsWindow
 from lucidgtk.VideoWindow import VideoWindow
+from lucidgtk.sequencerWindow import SequencerWindow
 
 UI_INFO = """
 <ui>
@@ -47,7 +49,10 @@ UI_INFO = """
         <menuitem action='ShowHelp' />
         <menuitem action='ShowAbout' />
       </menu>
-  </menubar>
+      <menu action='ToolsMenu'>
+          <menuitem action='ShowSequencer' />
+      </menu>
+      </menubar>
 </ui>
 """
 
@@ -64,6 +69,7 @@ class DreamWindow(Gtk.Window):
         self.set_icon_name('lucid-gtk')
         self.connect("delete-event", Gtk.main_quit)
         self.settings = Gio.Settings('org.rebelweb.dreamer')
+        self.adjustments = Gio.Settings('org.rebelweb.dreamer.adjustments')
         self.string = self.strings()
     
     def run(self):        
@@ -74,15 +80,22 @@ class DreamWindow(Gtk.Window):
 
         self.wakeup = False 
         self.fps = False # if not set then output videos default to settings obj. value
+        self.settingsErr = None
 
         if self.initcaffe() is False:
             self.do_config_error('Caffe could not start. Please review the model and deploy file settings')
             return
 
+        if self.proj_folder_set() is False:
+            self.do_config_error('Please set the locations for project files to be stored')
+            return
+          
         if self.media_folders_set() is False:
             self.do_config_error('Please set the locations for deepdream images and videos to be stored')
             return
-                   
+        
+        self.sequences = self.get_sequences()           
+        self.sequence = None           
         self.mode = 'image'
 
         self.do_menu_bar()
@@ -98,6 +111,9 @@ class DreamWindow(Gtk.Window):
         self.show_all()
         self.wakeBtn.hide()
         
+    def sequencer_win(self,b):
+        SequencerWindow(self)
+    
     def get_lucid_icon(self, size):
         icon_theme = Gtk.IconTheme.get_default()
         icon_info = icon_theme.lookup_icon("lucid-gtk", size, 0)
@@ -110,7 +126,7 @@ class DreamWindow(Gtk.Window):
         return abs_path_to_resource
         
     def do_menu_bar(self):
-		action_group = Gtk.ActionGroup("my_actions")
+		action_group = Gtk.ActionGroup("lucid_actions")
 		self.add_main_menu_actions(action_group)
 		uimanager = self.create_ui_manager()
 		uimanager.insert_action_group(action_group)
@@ -134,7 +150,14 @@ class DreamWindow(Gtk.Window):
 		action_prefs = Gtk.Action("ShowPrefs", "Preferences", None, None)
 		action_group.add_action(action_prefs)
 		action_prefs.connect("activate", self.on_settings_clicked)
+        
+		action_edit = Gtk.Action("ToolsMenu", "Tools", None, None)
+		action_group.add_action(action_edit)
 
+		action_seq = Gtk.Action("ShowSequencer", "Pre-Sequencer", None, None)
+		action_group.add_action(action_seq)
+		action_seq.connect("activate", self.sequencer_win)
+        
 		action_helpmenu = Gtk.Action("HelpMenu", "Help", None, None)
 		action_group.add_action(action_helpmenu)
 
@@ -174,8 +197,8 @@ class DreamWindow(Gtk.Window):
 		dialog.destroy()
 	
     def get_temp_im_path(self):
-        imdir = self.settings.get_string('im-dir')+'/.temp'
-        impath = imdir+'/lucidgtk-temp.jpeg'
+        imdir = self.settings.get_string('proj-dir')
+        impath = imdir+'/.lucidgtk-temp.jpeg'
         if os.path.isdir(imdir) == False:
             os.makedirs(imdir)
         if os.path.isfile(impath) == False:
@@ -191,14 +214,27 @@ class DreamWindow(Gtk.Window):
             'dreaming':'DREAMING. DO NOT DISTURB!...',
             'waking': 'OK, OK, I\'ll wake at the end of this dream loop!'
         }
-        
+    
+    def get_sequences(self):
+        jf = self.settings.get_string('proj-dir')+'/.lucid.seq.json'
+        if os.path.isfile(jf):
+            d = open(jf,'r').read()
+            return json.loads(d)
+        else:
+            return {}
     
     def media_folders_set(self):
         if os.path.isdir(self.settings.get_string('im-dir')) and os.path.isdir(self.settings.get_string('vid-dir')):
             return True
         return False
     
+    def proj_folder_set(self):
+        if os.path.isdir(self.settings.get_string('proj-dir')):
+            return True
+        return False
+    
     def do_config_error(self, msg):
+        self.settingsErr = msg
         label = Gtk.Label("")
         label.set_markup('<span foreground="white" background="red" weight="heavy">CONFIGURATION ERROR: '+msg+'</span>')
         self.grid.add(label)
@@ -384,11 +420,12 @@ class DreamWindow(Gtk.Window):
     
     def do_adjustments_bar(self):
         self.adjBar = Gtk.Box()
-        
-        nloops = self.settings.get_int('n-loops')
+        ADJ = self.adjustments
+        S = self.settings
+        nloops = S.get_int('n-loops')
     	self.loopLabel = Gtk.Label("Loops:")
         self.adjBar.add(self.loopLabel)
-        adjustment = Gtk.Adjustment(nloops, 1, 99999, 1, 0, 0)
+        adjustment = Gtk.Adjustment(nloops, ADJ.get_int('loops-min'), ADJ.get_int('loops-max'), ADJ.get_int('loops-incr'), 0, 0)
         self.loopSpin = Gtk.SpinButton()
         self.loopSpin.set_adjustment(adjustment)
         self.loopSpin.set_value(nloops)
@@ -396,10 +433,10 @@ class DreamWindow(Gtk.Window):
         self.loopSpin.connect("value-changed", self.set_loops_val)
         self.adjBar.pack_start(self.loopSpin, False, False, 0)
     	
-        iter_val = self.settings.get_int('n-iterations')
+        iter_val = S.get_int('n-iterations')
         label = Gtk.Label("Iterations:")
         self.adjBar.add(label)
-        adjustment = Gtk.Adjustment(iter_val, 1, 37, 1, 10, 0)
+        adjustment = Gtk.Adjustment(iter_val, ADJ.get_int('incr-min'), ADJ.get_int('incr-max'), ADJ.get_int('incr-incr'), 10, 0)
         self.iterSpin = Gtk.SpinButton()
         self.iterSpin.set_adjustment(adjustment)
         self.iterSpin.set_value(iter_val)
@@ -407,10 +444,10 @@ class DreamWindow(Gtk.Window):
         self.iterSpin.connect("value-changed", self.set_iter_val)
         self.adjBar.pack_start(self.iterSpin, False, False, 0)
         
-        octv_val = self.settings.get_int('n-octaves')
+        octv_val = S.get_int('n-octaves')
         label = Gtk.Label("Octaves:")
         self.adjBar.add(label)
-        adjustment = Gtk.Adjustment(octv_val, 1, 23, 1, 0, 0)
+        adjustment = Gtk.Adjustment(octv_val, ADJ.get_int('octv-min'), ADJ.get_int('octv-max'), ADJ.get_int('octv-incr'), 0, 0)
         self.octaveSpin = Gtk.SpinButton()
         self.octaveSpin.set_adjustment(adjustment)
         self.octaveSpin.set_value(octv_val)
@@ -418,40 +455,42 @@ class DreamWindow(Gtk.Window):
         self.octaveSpin.connect("value-changed", self.set_octv_val)
         self.adjBar.pack_start(self.octaveSpin, False, False, 0)
         
-        octv_scale = self.settings.get_double('octave-scale')
+        octv_scale = S.get_double('octave-scale')
         label = Gtk.Label("Scale:")
         self.adjBar.add(label)
-        adjustment = Gtk.Adjustment(octv_scale, 1.00, 1.90, 0.1, 0, 0)
+        adjustment = Gtk.Adjustment(octv_scale, ADJ.get_double('scale-min'), ADJ.get_double('scale-max'), ADJ.get_double('scale-incr'), 0, 0)
         self.scaleSpin = Gtk.SpinButton()
-        self.scaleSpin.configure(adjustment,0.01,2)
+        self.scaleSpin.configure(adjustment,0.01,ADJ.get_int('scale-dp'))
         self.scaleSpin.set_value(octv_scale)
         self.scaleSpin.set_numeric(1)
         self.scaleSpin.connect("value-changed", self.set_scale_val)
         self.adjBar.pack_start(self.scaleSpin, False, False, 0)
         
-        zoom_scale = self.settings.get_double('zoom-scale')
+        zoom_scale = S.get_double('zoom-scale')
         self.zoomLabel = Gtk.Label("Zoom:")
         self.adjBar.add(self.zoomLabel)
-        adjustment = Gtk.Adjustment(zoom_scale, 0.00, 0.10, 0.01, 0, 0)
+        adjustment = Gtk.Adjustment(zoom_scale, ADJ.get_double('zoom-min'), ADJ.get_double('zoom-max'), ADJ.get_double('zoom-incr'), 0, 0)
         self.zoomSpin = Gtk.SpinButton()
-        self.zoomSpin.configure(adjustment,0.01,2)
+        self.zoomSpin.configure(adjustment,0.01,ADJ.get_int('zoom-dp'))
         self.zoomSpin.set_value(zoom_scale)
         self.zoomSpin.set_numeric(1)
         self.zoomSpin.connect("value-changed", self.set_zoom_val)
         self.adjBar.pack_start(self.zoomSpin, False, False, 0)
         
-        deg_val = self.settings.get_double('rot-deg')
+        deg_val = S.get_double('rot-deg')
         self.degLabel = Gtk.Label("Rotation:")
         self.adjBar.add(self.degLabel)
-        adjustment = Gtk.Adjustment(deg_val, -10.00, 10.00, 0.10, 0, 0)
+        adjustment = Gtk.Adjustment(deg_val, ADJ.get_double('rot-min'), ADJ.get_double('rot-max'), ADJ.get_double('rot-incr'), 0, 0)
         self.degSpin = Gtk.SpinButton()
-        self.degSpin.configure(adjustment,0.10,2)
+        self.degSpin.configure(adjustment,0.10,ADJ.get_int('rot-dp'))
         self.degSpin.set_value(deg_val)
         self.degSpin.set_numeric(1)
         self.degSpin.connect("value-changed", self.set_deg_val)
         self.adjBar.pack_start(self.degSpin, False, False, 0)
         
         self.grid.attach_next_to(self.adjBar, self.topBar, Gtk.PositionType.BOTTOM, 1, 3)
+    
+    
     
     def on_inp_combo_changed(self, combo):
         tree_iter = combo.get_active_iter()
@@ -501,6 +540,19 @@ class DreamWindow(Gtk.Window):
         self.topBar.pack_start(self.wakeBtn, False, False, 0)
         self.topBar.set_child_packing(self.wakeBtn, False, True, 0, 1)
         
+        self.seq_store = Gtk.ListStore(str)
+        self.set_seq_liststore(self.seq_store)
+        
+        self.seqCombo = Gtk.ComboBox.new_with_model(self.seq_store)
+        renderer_text = Gtk.CellRendererText()
+        self.seqCombo.pack_start(renderer_text, True)
+        self.seqCombo.add_attribute(renderer_text, "text", 0)
+        self.seqCombo.set_active(0)
+        self.topBar.pack_start(self.seqCombo, False, False, True)
+        self.topBar.set_child_packing(self.seqCombo, False, True, 0, 1)
+        self.seqCombo.connect("changed", self.set_sequence)
+        
+        
         self.dreamBtn = Gtk.Button('START DREAMING')
         self.dreamBtn.connect("clicked", self.on_dream_clicked)
         self.topBar.pack_start(self.dreamBtn, False, False, 0)
@@ -509,7 +561,69 @@ class DreamWindow(Gtk.Window):
         self.inpCombo.connect("changed", self.on_inp_combo_changed)
         
         self.grid.attach(self.topBar,1,1,2,1)
+    
+    def set_seq_liststore(self, store):
+        store.clear()
+        store.append(['On the fly'])
+        for k in self.sequences.iterkeys():
+            store.append([k])
+        store.append(['Add New Sequence'])
+    
+    def set_sequence(self, combo):
+        tree_iter = combo.get_active_iter()
+        if tree_iter != None:
+            model = combo.get_model()
+            seq = model[tree_iter][0]
+            if seq == 'On the fly':
+                self.sequence = None
+            elif seq == 'Add New Sequence':
+                self.sequencer_win(False)
+                self.sequence = None
+                self.seqCombo.set_active(0)
+            else:
+                self.sequence = {}
+                self.build_sequence(self.sequences[seq])
         
+    
+    def get_seq_key(self,key):
+        try:
+            return int(key)
+        except ValueError:
+            return key
+    
+    def build_sequence(self,seq):
+        seq = collections.OrderedDict(sorted(seq.items(), key=lambda t: self.get_seq_key(t[0])))
+        self.sequence = seq.copy()
+        i = 1
+        zoom_trans = '0'
+        deg_trans = '0'
+        last_frame = None
+        for frame in seq.iterkeys():
+            if last_frame != None:
+                if int(zoom_trans) + int(deg_trans) > 0:
+                    self.build_seq_trans(seq, frame, last_frame, zoom_trans, deg_trans)
+            zoom_trans = seq[frame]['zoom-trans']
+            deg_trans = seq[frame]['deg-trans']
+            last_frame = frame
+    
+    def build_seq_trans(self, seq, f, lf, zt, dt):
+        zt_start_val = float(seq[lf]['zoom'])
+        zt_end_val = float(seq[f]['zoom'])
+        zt_span = zt_end_val - zt_start_val
+        deg_start_val = float(seq[lf]['deg'])
+        deg_end_val = float(seq[f]['deg'])
+        deg_span = deg_end_val - deg_start_val
+        frame_span = int(f) - int(lf)
+        for i in range(int(lf)+1,int(f)):
+            self.sequence[str(i)] = seq[lf].copy()
+            pos = i-int(lf)
+            if zt_span>0 or zt_span<0:
+                self.sequence[str(i)]['zoom'] = seq[lf]['zoom'] + (pos*(zt_span/frame_span))
+                print seq[lf]['zoom'] + (pos*(zt_span/frame_span))
+            if deg_span>0 or deg_span<0:
+                self.sequence[str(i)]['deg'] = seq[lf]['deg'] + (pos*(deg_span/frame_span))
+        
+    
     def on_wake_clicked(self, btn):
 		self.set_notif('<span foreground="black" background="orange" weight="heavy">%s</span>'%self.string['waking'])
 		while Gtk.events_pending():
@@ -640,6 +754,9 @@ class DreamWindow(Gtk.Window):
     	    if self.wakeup:
     	        break
     	    
+            if self.sequence != None and str(i+1) in self.sequence:
+                self.do_seq_adjust(str(i+1))
+            
     	    self.loop = i
             
             img = self.prepare_image()
@@ -674,6 +791,14 @@ class DreamWindow(Gtk.Window):
         self.wakeBtn.hide()
         self.enable_buttons()
 
+    def do_seq_adjust(self, i):
+        self.iterSpin.set_value(self.sequence[i]['iters'])
+        self.octaveSpin.set_value(self.sequence[i]['octaves'])
+        self.scaleSpin.set_value(self.sequence[i]['scale'])
+        self.zoomSpin.set_value(self.sequence[i]['zoom'])
+        self.degSpin.set_value(self.sequence[i]['deg'])
+        
+    
     def on_fBtn_clicked(self, combo):
         t = self.get_input_mode()
         if t is 1:
@@ -743,5 +868,4 @@ class DreamWindow(Gtk.Window):
     def prepare_image(self):
     	return np.float32(PIL.Image.open(self.imagef))
     	
-
-
+ 

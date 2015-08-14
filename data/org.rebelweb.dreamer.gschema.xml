@@ -33,6 +33,14 @@
       </description>
     </key>
     
+    <key name='proj-dir' type='s'>
+      <default>''</default>
+      <summary>Folder for project files</summary>
+      <description>
+        Where to save project files
+      </description>
+    </key>
+    
     <key name='im-dir' type='s'>
       <default>''</default>
       <summary>Output images folder</summary>
@@ -147,5 +155,164 @@
     
   </schema>
   
+  <schema id="org.rebelweb.dreamer.adjustments" path="/org/rebelweb/dreamer/adjustments/">
+    
+    <key name='loops-min' type='i'>
+      <default>1</default>
+      <summary>Min allowed loops</summary>
+      <description>
+        The minimum no. of allowed loops on the main window selection box
+      </description>
+    </key>
+    <key name='loops-max' type='i'>
+      <default>10000</default>
+      <summary>Max allowed loops</summary>
+      <description>
+        The maximum no. of allowed loops on the main window selection box
+      </description>
+    </key>
+    <key name='loops-incr' type='i'>
+      <default>1</default>
+      <summary>Loops increment val</summary>
+      <description>
+        How much to increment the window selection box by on each click
+      </description>
+    </key>
+    
+    <key name='incr-min' type='i'>
+      <default>1</default>
+      <summary>Min allowed increments</summary>
+      <description>
+        The minimum no. of allowed increments on the main window selection box
+      </description>
+    </key>
+    <key name='incr-max' type='i'>
+      <default>100</default>
+      <summary>Max allowed loops</summary>
+      <description>
+        The maximum no. of allowed increments on the main window selection box
+      </description>
+    </key>
+    <key name='incr-incr' type='i'>
+      <default>1</default>
+      <summary>increments increment val</summary>
+      <description>
+        How much to increment the window selection box by on each click
+      </description>
+    </key>
+    
+    <key name='octv-min' type='i'>
+      <default>1</default>
+      <summary>Min allowed octaves</summary>
+      <description>
+        The minimum no. of allowed octaves on the main window selection box
+      </description>
+    </key>
+    <key name='octv-max' type='i'>
+      <default>100</default>
+      <summary>Max allowed octaves</summary>
+      <description>
+        The maximum no. of allowed octaves on the main window selection box
+      </description>
+    </key>
+    <key name='octv-incr' type='i'>
+      <default>1</default>
+      <summary>octaves increment val</summary>
+      <description>
+        How much to increment the window selection box by on each click
+      </description>
+    </key>
+    
+    
+    <key name='scale-min' type='d'>
+      <default>1.00</default>
+      <summary>Min allowed scales</summary>
+      <description>
+        The minimum no. of allowed scales on the main window selection box
+      </description>
+    </key>
+    <key name='scale-max' type='d'>
+      <default>2.00</default>
+      <summary>Max allowed scales</summary>
+      <description>
+        The maximum no. of allowed scales on the main window selection box
+      </description>
+    </key>
+    <key name='scale-incr' type='d'>
+      <default>0.01</default>
+      <summary>scales increment val</summary>
+      <description>
+        How much to increment the window selection box by on each click
+      </description>
+    </key>
+    <key name='scale-dp' type='i'>
+      <default>3</default>
+      <summary>Scale decimal places</summary>
+      <description>
+        No. of decimal places on the main window selection box
+      </description>
+    </key>
+    
+    <key name='zoom-min' type='d'>
+      <default>0.00</default>
+      <summary>Min allowed zoom</summary>
+      <description>
+        The minimum no. of allowed zoom on the main window selection box
+      </description>
+    </key>
+    <key name='zoom-max' type='d'>
+      <default>5.00</default>
+      <summary>Max allowed zoom</summary>
+      <description>
+        The maximum no. of allowed zoom on the main window selection box
+      </description>
+    </key>
+    <key name='zoom-incr' type='d'>
+      <default>0.01</default>
+      <summary>zoom increment val</summary>
+      <description>
+        How much to increment the window selection box by on each click
+      </description>
+    </key>
+    <key name='zoom-dp' type='i'>
+      <default>3</default>
+      <summary>Zoom decimal places</summary>
+      <description>
+        No. of decimal places on the main window selection box
+      </description>
+    </key>
+    
+    <key name='rot-min' type='d'>
+      <default>-15</default>
+      <summary>Min allowed rotation</summary>
+      <description>
+        The minimum no. of allowed rotation on the main window selection box
+      </description>
+    </key>
+    <key name='rot-max' type='d'>
+      <default>15</default>
+      <summary>Max allowed rotation</summary>
+      <description>
+        The maximum no. of allowed rotation on the main window selection box
+      </description>
+    </key>
+    <key name='rot-incr' type='d'>
+      <default>0.1</default>
+      <summary>rotation increment val</summary>
+      <description>
+        How much to increment the window selection box by on each click
+      </description>
+    </key>
+    <key name='rot-dp' type='i'>
+      <default>3</default>
+      <summary>Rotation decimal places</summary>
+      <description>
+        No. of decimal places on the main window selection box
+      </description>
+    </key>
+    
+    
+    
+   </schema>   
   
 </schemalist>
