@@ -637,14 +637,18 @@ class DreamWindow(Gtk.Window):
     def save_image(self,a=0):
     	image = PIL.Image.open(self.tempImagePath)
     	fp = self.make_new_fname()
-    	image.save(fp, optimize=True)
+    	image.save(fp)
     	
     def make_new_fname(self, dirSetting='im-dir', extension='.jpg'):
-        fp = self.settings.get_string(dirSetting)+'/'+self.imageName.get_text()+extension
+        d = self.settings.get_string(dirSetting)+'/'+self.imageName.get_text()
+        
+        if os.path.isdir(d) == False:
+            os.makedirs(d)
+        fp = d+'/'+self.imageName.get_text()+extension
         if os.path.isfile(fp):
             i = 0
             while True:
-                fp = self.settings.get_string(dirSetting)+'/'+self.imageName.get_text()+'_'+str(i)+extension
+                fp = d+'/'+self.imageName.get_text()+'_'+str(i)+extension
                 if os.path.isfile(fp)==False:
                     break
                 i += 1
