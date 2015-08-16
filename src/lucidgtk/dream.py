@@ -97,7 +97,7 @@ class DreamWindow(Gtk.Window):
         self.sequences = self._Sequencer.get_sequences()           
         self.sequence = None           
         self.mode = 'image'
-
+        
         self.do_menu_bar()
 
         self.do_top_bar()
@@ -111,6 +111,8 @@ class DreamWindow(Gtk.Window):
         self.show_all()
         self.wakeBtn.hide()
         
+        
+        
     def sequencer_win(self,b):
         SequencerWindow(self)
     
@@ -118,12 +120,6 @@ class DreamWindow(Gtk.Window):
         icon_theme = Gtk.IconTheme.get_default()
         icon_info = icon_theme.lookup_icon("lucid-gtk", size, 0)
         return icon_info.get_filename()
-    
-    def get_resource_path(self,rel_path):
-        dir_of_py_file = os.path.dirname(__file__)
-        rel_path_to_resource = os.path.join(dir_of_py_file, rel_path)
-        abs_path_to_resource = os.path.abspath(rel_path_to_resource)
-        return abs_path_to_resource
         
     def do_menu_bar(self):
 		action_group = Gtk.ActionGroup("lucid_actions")
@@ -309,15 +305,18 @@ class DreamWindow(Gtk.Window):
 		image.save(impath)
 		self.display_image(impath)
     
+    def get_selected_layer(self):
+        tree_iter = self.layer_combo.get_active_iter()
+        if tree_iter != None:
+            model = self.layer_combo.get_model()
+            return model[tree_iter][0]
+        else:
+            raise Exception("No output layer is set!")
+            return False
+    
     def make_step(self, net, step_size=1.5, jitter=32, clip=True, objective=objective_L2):
        
-		tree_iter = self.layer_combo.get_active_iter()
-		if tree_iter != None:
-			model = self.layer_combo.get_model()
-			end = model[tree_iter][0]
-		else:
-			raise Exception("No output layer is set!")
-			return
+		end = self.get_selected_layer()
 
 		src = net.blobs['data'] # input image is stored in Net's 'data' blob
 		dst = net.blobs[end]
@@ -681,7 +680,10 @@ class DreamWindow(Gtk.Window):
             imgout = np.uint8(np.clip(imgout, 0, 255))
             imgout = cv2.cvtColor(imgout, cv2.COLOR_BGR2RGB)
             vidOut.write(imgout)
-        
+            
+        if self.sequence != None:
+            self.loopSpin.set_value(int(self.sequence.keys()[-1]))
+            
     	for i in xrange(int(self.loopSpin.get_value())):
     	    if self.wakeup:
     	        break
@@ -736,7 +738,7 @@ class DreamWindow(Gtk.Window):
         if tree_iter != None:
             model = self.inpCombo.get_model()
             return model[tree_iter][0]
-    
+        
     
     def on_fselect_clicked(self):
         dialog = Gtk.FileChooserDialog("Please choose a file", self,

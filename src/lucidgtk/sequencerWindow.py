@@ -20,6 +20,7 @@ import json
 import os
 import collections
 
+
 class SequencerWindow(Gtk.Window):
 
 	def __init__(self, mainWin):
@@ -29,28 +30,21 @@ class SequencerWindow(Gtk.Window):
 		self.set_border_width(10)
 		self.vbox = Gtk.VBox()
 		self.box = Gtk.Box()
-		self.vbox.add(self.box)
 		
+		self.add(self.vbox)
 		self.fJson = self.settings.get_string('proj-dir')+'/.lucid.seq.json'
-		self.sequences = self.get_sequences()
+		self.sequences = mainWin._Sequencer.get_sequences()
 		self.unsaved = {}
 
 		self.do_save_bar()
 		self.do_adjustments_bar()
 		self.do_viewscreen()
+		self.vbox.add(self.box)
 		self.display_adjustments()
 		
-		self.add(self.vbox)
 		self.show_all()
+		
 
-	def get_sequences(self):
-		if os.path.isfile(self.fJson):
-			d = open(self.fJson,'r').read()
-			j = json.loads(d)
-			return j
-		else:
-			return {}
-	
 	def do_viewscreen(self):
 		self.vs = Gtk.VBox()
 		label = Gtk.Label("ORDER:")
@@ -63,104 +57,203 @@ class SequencerWindow(Gtk.Window):
 		ADJ = self.mainWin.adjustments
 		S = self.settings
 		self.unsaved[1] = {}
+		
+		box = Gtk.Box(homogeneous = True)
 		self.loopLabel = Gtk.Label("Adjust @ loop:")
-		self.adjBar.add(self.loopLabel)
+		box.add(self.loopLabel)
 		adjustment = Gtk.Adjustment(1, ADJ.get_int('loops-min'), ADJ.get_int('loops-max'), ADJ.get_int('loops-incr'), 0, 0)
 		self.loopSpin = Gtk.SpinButton()
 		self.loopSpin.set_adjustment(adjustment)
 		self.loopSpin.set_value(1)
 		self.loopSpin.set_numeric(1)
-		self.adjBar.pack_start(self.loopSpin, False, False, 0)
-		
+		box.add(self.loopSpin)
+		self.loopSpin.connect("changed", self.focus_row_from_spin)
+		self.adjBar.pack_start(box, False, False, 0)
+
+		box = Gtk.Box(homogeneous = True)
 		iter_val = S.get_int('n-iterations')
 		label = Gtk.Label("Iterations:")
-		self.adjBar.add(label)
+		box.add(label)
 		adjustment = Gtk.Adjustment(iter_val, ADJ.get_int('incr-min'), ADJ.get_int('incr-max'), ADJ.get_int('incr-incr'), 10, 0)
 		self.iterSpin = Gtk.SpinButton()
+		box.add(self.iterSpin)
 		self.iterSpin.set_adjustment(adjustment)
 		self.iterSpin.set_value(iter_val)
 		self.iterSpin.set_numeric(1)
-		self.adjBar.pack_start(self.iterSpin, False, False, 0)
+		btn = Gtk.Button(">")
+		btn.connect("clicked", self.insert_val, 'iters', self.iterSpin)
+		box.add(btn)
+		self.adjBar.pack_start(box, False, False, 0)
 		self.unsaved[1]['iters'] = iter_val
-		
+
+		box = Gtk.Box(homogeneous = True)
 		octv_val = S.get_int('n-octaves')
 		label = Gtk.Label("Octaves:")
-		self.adjBar.add(label)
+		box.add(label)
 		adjustment = Gtk.Adjustment(octv_val, ADJ.get_int('octv-min'), ADJ.get_int('octv-max'), ADJ.get_int('octv-incr'), 0, 0)
 		self.octaveSpin = Gtk.SpinButton()
+		box.add(self.octaveSpin)
 		self.octaveSpin.set_adjustment(adjustment)
 		self.octaveSpin.set_value(octv_val)
 		self.octaveSpin.set_numeric(1)
-		self.adjBar.pack_start(self.octaveSpin, False, False, 0)
+		btn = Gtk.Button(">")
+		btn.connect("clicked", self.insert_val, 'octaves', self.octaveSpin)
+		box.add(btn)
+		self.adjBar.pack_start(box, False, False, 0)
 		self.unsaved[1]['octaves'] = octv_val
-		
+
+		box = Gtk.Box(homogeneous = True)
 		octv_scale = S.get_double('octave-scale')
 		label = Gtk.Label("Scale:")
-		self.adjBar.add(label)
+		box.add(label)
 		adjustment = Gtk.Adjustment(octv_scale, ADJ.get_double('scale-min'), ADJ.get_double('scale-max'), ADJ.get_double('scale-incr'), 0, 0)
 		self.scaleSpin = Gtk.SpinButton()
+		box.add(self.scaleSpin)
 		self.scaleSpin.configure(adjustment,0.01,ADJ.get_int('scale-dp'))
 		self.scaleSpin.set_value(octv_scale)
 		self.scaleSpin.set_numeric(1)
-		self.adjBar.pack_start(self.scaleSpin, False, False, 0)
+		btn = Gtk.Button(">")
+		btn.connect("clicked", self.insert_val, 'scale', self.scaleSpin)
+		box.add(btn)
+		self.adjBar.pack_start(box, False, False, 0)
 		self.unsaved[1]['scale'] = octv_scale
-		
+
+		box = Gtk.Box(homogeneous = True)
 		zoom_scale = S.get_double('zoom-scale')
 		self.zoomLabel = Gtk.Label("Zoom:")
-		self.adjBar.add(self.zoomLabel)
+		box.add(self.zoomLabel)
 		adjustment = Gtk.Adjustment(zoom_scale, ADJ.get_double('zoom-min'), ADJ.get_double('zoom-max'), ADJ.get_double('zoom-incr'), 0, 0)
 		self.zoomSpin = Gtk.SpinButton()
+		box.add(self.zoomSpin)
 		self.zoomSpin.configure(adjustment,0.01,ADJ.get_int('zoom-dp'))
 		self.zoomSpin.set_value(zoom_scale)
 		self.zoomSpin.set_numeric(1)
-		self.adjBar.pack_start(self.zoomSpin, False, False, 0)
+		btn = Gtk.Button(">")
+		btn.connect("clicked", self.insert_val, 'zoom', self.zoomSpin)
+		box.add(btn)
+		self.adjBar.pack_start(box, False, False, 0)
 		self.unsaved[1]['zoom'] = zoom_scale
 
-		label = Gtk.Label("Zoom transition:")
-		self.adjBar.add(label)
+		box = Gtk.Box(homogeneous = True)
+		label = Gtk.Label("Zoom Transition:")
+		box.add(label)
 		zoomTrans_store = Gtk.ListStore(int, str)
 		zoomTrans_store.append([0, "None"])
 		zoomTrans_store.append([1, "Increment"])
 		self.zoomTrans = Gtk.ComboBox.new_with_model(zoomTrans_store)
+		box.add(self.zoomTrans)
 		renderer_text = Gtk.CellRendererText()
 		self.zoomTrans.pack_start(renderer_text, True)
 		self.zoomTrans.add_attribute(renderer_text, "text", 1)
 		self.zoomTrans.set_active(0)
-		self.adjBar.pack_start(self.zoomTrans, False, False, 0)
+		btn = Gtk.Button(">")
+		btn.connect("clicked", self.insert_actv, 'zoom-trans','zoom', self.zoomTrans, self.zoomSpin)
+		box.add(btn)
+		self.adjBar.pack_start(box, False, False, 0)
 		self.unsaved[1]['zoom-trans'] = 0
 
+		box = Gtk.Box(homogeneous = True)
 		deg_val = S.get_double('rot-deg')
 		self.degLabel = Gtk.Label("Rotation:")
-		self.adjBar.add(self.degLabel)
+		box.add(self.degLabel)
 		adjustment = Gtk.Adjustment(deg_val, ADJ.get_double('rot-min'), ADJ.get_double('rot-max'), ADJ.get_double('rot-incr'), 0, 0)
 		self.degSpin = Gtk.SpinButton()
+		box.add(self.degSpin)
 		self.degSpin.configure(adjustment,0.10,ADJ.get_int('rot-dp'))
 		self.degSpin.set_value(deg_val)
 		self.degSpin.set_numeric(1)
-		self.adjBar.pack_start(self.degSpin, False, False, 0)
+		btn = Gtk.Button(">")
+		btn.connect("clicked", self.insert_val, 'deg', self.degSpin)
+		box.add(btn)
+		self.adjBar.pack_start(box, False, False, 0)
 		self.unsaved[1]['deg'] = round(deg_val,3)
-		
-		
-		label = Gtk.Label("Rotate transition:")
-		self.adjBar.add(label)
+
+
+		box = Gtk.Box(homogeneous = True)
+		label = Gtk.Label("Rot. Transition:")
+		box.add(label)
 		degTrans_store = Gtk.ListStore(int, str)
 		degTrans_store.append([0, "None"])
 		degTrans_store.append([1, "Increment"])
-		self.degTrans = Gtk.ComboBox.new_with_model(zoomTrans_store)
+		self.degTrans = Gtk.ComboBox.new_with_model(degTrans_store)
+		box.add(self.degTrans)
 		renderer_text = Gtk.CellRendererText()
 		self.degTrans.pack_start(renderer_text, True)
 		self.degTrans.add_attribute(renderer_text, "text", 1)
 		self.degTrans.set_active(0)
-		self.adjBar.pack_start(self.degTrans, False, False, 0)
+		btn = Gtk.Button(">")
+		btn.connect("clicked", self.insert_actv, 'deg-trans','deg', self.degTrans, self.degSpin)
+		box.add(btn)
+		self.adjBar.pack_start(box, False, False, 0)
 		self.unsaved[1]['deg-trans'] = 0
+
+		box = Gtk.Box(homogeneous = True)
+		label = Gtk.Label("Output Layer:")
+		box.add(label)
+		box.add(self.make_layer_select())
+		self.adjBar.pack_start(box, False, False, True)
+		self.unsaved[1]['layer'] = 0
 		
-		self.addBtn = Gtk.Button("Add")
-		self.addBtn.connect("clicked", self.on_add_clicked)
-		self.adjBar.pack_start(self.addBtn, False, False, 0)
+		box = Gtk.Box(homogeneous = True)
+		label = Gtk.Label(" ")
+		box.add(label)
+		btn = Gtk.Button(">")
+		btn.connect("clicked", self.insert_layer)
+		box.add(btn)
+		self.adjBar.pack_start(box, False, False, 0)
 
 		self.box.add(self.adjBar)
+	
+	def insert_val(self, btn, col, valobj):
+		row = int(self.loopSpin.get_value())
+		val = valobj.get_value()
+		if row not in self.unsaved:
+			self.unsaved[row] = {}
+		self.unsaved[row][col] = val
+		self.display_adjustments()
+	
+	def insert_actv(self, btn, col, col2, valobj, valobj2):
+		row = int(self.loopSpin.get_value())
+		val = valobj.get_active()
+		val2 = valobj2.get_value()
+		if row not in self.unsaved:
+			self.unsaved[row] = {}
+		self.unsaved[row][col] = val
+		self.unsaved[row][col2] = val2
+		self.display_adjustments()
+	
+	def insert_layer(self, btn):
+		row = int(self.loopSpin.get_value())
+		val = self.layer_combo.get_active()
+		if row not in self.unsaved:
+			self.unsaved[row] = {}
+		self.unsaved[row]['layer'] = val
+		self.display_adjustments()
+	
+	
 		
-		
+	def make_layer_select(self):
+		layer_store = Gtk.ListStore(int, str)
+		net = self.mainWin.net
+		l = list(net._layer_names)
+		blobs = list(net.blobs)
+		layers = [val for val in l if val in blobs]
+
+		# Remove googlenet layers that are causing core dumped crash
+		bad_layers = ['pool5/7x7_s1','loss3/classifier','prob']
+		i = 0
+		for layer in layers:
+			if layer not in bad_layers:
+				layer_store.append([i,layer])
+				i+=1
+
+		self.layer_combo = Gtk.ComboBox.new_with_model(layer_store)
+		renderer_text = Gtk.CellRendererText()
+		self.layer_combo.pack_start(renderer_text, True)
+		self.layer_combo.add_attribute(renderer_text, "text", 1)
+		self.layer_combo.set_active(0)
+		return self.layer_combo
+        
 	def on_add_clicked(self, btn):
 		self.unsaved[int(self.loopSpin.get_value())] = {
 			'iters':self.iterSpin.get_value(),
@@ -169,7 +262,8 @@ class SequencerWindow(Gtk.Window):
 			'zoom':self.zoomSpin.get_value(),
 			'deg':round(self.degSpin.get_value(),3),
 			'zoom-trans':self.get_trans(self.zoomTrans),
-			'deg-trans':self.get_trans(self.degTrans)
+			'deg-trans':self.get_trans(self.degTrans),
+			'layer':self.get_trans(self.layer_combo)
 			}
 		self.display_adjustments()
 	
@@ -188,83 +282,217 @@ class SequencerWindow(Gtk.Window):
 			'zoom':None,
 			'deg':None,
 			'zoom-trans':None,
-			'deg-trans':None
+			'deg-trans':None,
+			'layer':None
 			}
 		S = self.unsaved
 		for w in self.vs.get_children():
 			w.destroy()
+		
+		sortedKeys = sorted(S.iterkeys())
+		tableRowN = int(sortedKeys[-1])
+		if tableRowN<100:
+			tableRowN = 100
+		self.grid = Gtk.Table(tableRowN,11, False)
+		
+		self.scrollWin = Gtk.ScrolledWindow()
+		self.scrollWin.add(self.grid)
+		self.scrollWin.set_size_request(800,500)	
+
+		self.grid.attach(Gtk.Label('@ Frame'),0,1,0,1)
+		self.grid.attach(Gtk.Label('Iterations:'),1,2,0,1)
+		self.grid.attach(Gtk.Label('Octaves:'),2,3,0,1)
+		self.grid.attach(Gtk.Label('Scale:'),3,4,0,1)
+		self.grid.attach(Gtk.Label('Zoom'),4,5,0,1)
+		self.grid.attach(Gtk.Label('Transition'),5,6,0,1)
+		self.grid.attach(Gtk.Label('Rotation'),6,7,0,1)
+		self.grid.attach(Gtk.Label('Transition'),7,8,0,1)
+		self.grid.attach(Gtk.Label('Layer'),8,9,0,1)
+		self.grid.set_col_spacings(10)
+		self.grid.set_row_spacings(10)
+		i = 1
+		zoom_transitions = {}
+		active_zoom_transition = False
+		deg_transitions = {}
+		active_deg_transition = False
 		for key in sorted(S.iterkeys()):
-			box = Gtk.Box()
 			
-			label = Gtk.Label('@ FRAME '+str(int(key))+' :: ')
-			box.add(label)
+			btn = Gtk.Button(str(int(key)))
+			self.grid.attach(btn,0,1,int(key), int(key)+1)
+			btn.rowid = key	
+			btn.connect("clicked", self.focus_row_from_btn)
 			
-			if S[key]['iters'] != lastEntry['iters']:
-				label = Gtk.Label('iters: '+str(S[key]['iters'])+' | ')
-				box.add(label)
+			if 'iters' in S[key] and S[key]['iters'] != lastEntry['iters']:
+				label = Gtk.Label(str(S[key]['iters']))
+				self.grid.attach(label,1,2,int(key), int(key)+1)
 				lastEntry['iters'] = S[key]['iters']
 			
-			if S[key]['octaves'] != lastEntry['octaves']:
-				label = Gtk.Label('octaves: '+str(S[key]['octaves'])+' | ')
-				box.add(label)
+			if  'octaves' in S[key] and S[key]['octaves'] != lastEntry['octaves']:
+				label = Gtk.Label(str(S[key]['octaves']))
+				self.grid.attach(label,2,3,int(key), int(key)+1)
 				lastEntry['octaves'] = S[key]['octaves']
 			
-			if S[key]['scale'] != lastEntry['scale']:
-				label = Gtk.Label('scale: '+str(S[key]['scale'])+' | ')
-				box.add(label)
+			if  'scale' in S[key] and S[key]['scale'] != lastEntry['scale']:
+				label = Gtk.Label(str(S[key]['scale']))
+				self.grid.attach(label,3,4,int(key), int(key)+1)
 				lastEntry['scale'] = S[key]['scale']
 			
-			if S[key]['zoom'] != lastEntry['zoom']:
-				label = Gtk.Label('zoom: '+str(S[key]['zoom'])+' | ')
-				box.add(label)
+			if  'zoom' in S[key] and S[key]['zoom'] != lastEntry['zoom']:
+				label = Gtk.Label(str(S[key]['zoom']))
+				self.grid.attach(label,4,5,int(key), int(key)+1)
 				lastEntry['zoom'] = S[key]['zoom']
+				if active_zoom_transition != False:
+					zoom_transitions[active_zoom_transition]['breaks'].append(int(key))
 			
-			if S[key]['deg'] != lastEntry['deg']:
-				label = Gtk.Label('rotation: '+str(round(S[key]['deg'],3))+' | ')
-				box.add(label)
-				lastEntry['deg'] = S[key]['deg']
-			
-			self.vs.add(box)
-			self.vs.set_child_packing(box,False,False,5,0)	
-			
-			box = Gtk.Box()
-			
-			if S[key]['zoom-trans'] != lastEntry['zoom-trans']:
-				label = Gtk.Label('zoom transition: '+str(S[key]['zoom-trans'])+' | ')
-				box.add(label)
+			if  'zoom-trans' in S[key] and S[key]['zoom-trans'] != lastEntry['zoom-trans']:
+				label = Gtk.Label()
+				label.set_markup('<span background="#ffffff">'+str(S[key]['zoom-trans'])+'</span>')
+				self.grid.attach(label,5,6,int(key), int(key)+1)
 				lastEntry['zoom-trans'] = S[key]['zoom-trans']
+				if S[key]['zoom-trans'] == 0:
+					active_zoom_transition = False
+				else:
+					zoom_transitions[key] = {'type':S[key]['zoom-trans'],'breaks':[]}
+					active_zoom_transition = key
 			
-			if S[key]['deg-trans'] != lastEntry['deg-trans']:
-				label = Gtk.Label('rotation transition: '+str(S[key]['deg-trans'])+' | ')
-				box.add(label)
+			if  'deg' in S[key] and S[key]['deg'] != lastEntry['deg']:
+				label = Gtk.Label(str(round(S[key]['deg'],3)))
+				self.grid.attach(label,6,7,int(key), int(key)+1)
+				lastEntry['deg'] = S[key]['deg']
+				if active_deg_transition != False:
+					deg_transitions[active_deg_transition]['breaks'].append(int(key))
+					
+			if  'deg-trans' in S[key] and S[key]['deg-trans'] != lastEntry['deg-trans']:
+				label = Gtk.Label(str(S[key]['deg-trans']))
+				self.grid.attach(label,7,8,int(key), int(key)+1)
 				lastEntry['deg-trans'] = S[key]['deg-trans']
-				
-			self.vs.add(box)
-			self.vs.set_child_packing(box,False,False,5,0)	
+				if S[key]['deg-trans'] == 0:
+					active_deg_transition = False
+				else:
+					deg_transitions[key] = {'type':S[key]['deg-trans'],'breaks':[]}
+					active_deg_transition = key
 			
+			if  'layer' in S[key] and S[key]['layer'] != lastEntry['layer']:
+				label = Gtk.Label(S[key]['layer'])
+				self.grid.attach(label,8,9,int(key), int(key)+1)
+				lastEntry['layer'] = S[key]['layer']
+			if i>1:
+				btn = Gtk.Button('x')
+				self.grid.attach(btn,9,10,int(key), int(key)+1)	
+				btn.rowid = key	
+				btn.connect("clicked", self.delete_row)
+			else:
+				i+=1
+		self.display_transitions(zoom_transitions,'zoom')	
+		self.display_transitions(deg_transitions,'deg')	
+		self.vs.add(self.scrollWin)
 		self.vs.show_all()
+		self.vs.set_child_packing(self.grid,False,False,5,0)
 			
+	def display_transitions(self, trans, typ):
+		for k in trans.iterkeys():
+			start = k
+			for end in trans[k]['breaks']:
+				self.display_transition(int(start), end, typ)
+				start = end
+	
+	def display_transition(self, start, end, typ):
+		trans_start = self.unsaved[start][typ]
+		trans_end = self.unsaved[end][typ]
+		trans_dif = trans_end - trans_start
+		span = end - start
+		for i in xrange(start+1, end):
+			pos = i-start
+			zoom = trans_start + (pos*(trans_dif/span))
+			label = Gtk.Label()
+			label.set_markup('<span weight="light" foreground="#999999">'+str(round(zoom,3))+'</span>')
+			if typ == 'zoom':
+				self.grid.attach(label,5,6,i,i+1)	
+			elif typ == 'deg':
+				self.grid.attach(label,7,8,i,i+1)	
+				
+	
+	def delete_row(self,btn):
+		self.unsaved.pop(btn.rowid, None)
+		self.display_adjustments()
+	
+	def focus_row_from_spin(self, spin):
+		self.focus_row(spin.get_value())
+	
+	def focus_row_from_btn(self, btn):
+		self.focus_row(btn.rowid)
+		self.loopSpin.set_value(btn.rowid)
+	
+	def focus_row(self, row):
+		for i in xrange(1,int(row)+1):
+			if i in self.unsaved:
+				if 'iters' in self.unsaved[i]:
+					self.iterSpin.set_value(self.unsaved[i]['iters'])
+				if 'octaves' in self.unsaved[i]:
+					self.octaveSpin.set_value(self.unsaved[i]['octaves'])
+				if 'scale' in self.unsaved[i]:
+					self.scaleSpin.set_value(self.unsaved[i]['scale'])
+				if 'zoom' in self.unsaved[i]:
+					self.zoomSpin.set_value(self.unsaved[i]['zoom'])
+				if 'deg' in self.unsaved[i]:
+					self.degSpin.set_value(self.unsaved[i]['deg'])
+				if 'zoom-trans' in self.unsaved[i]:
+					self.zoomTrans.set_active(int(self.unsaved[i]['zoom-trans']))
+				if 'deg-trans' in self.unsaved[i]:
+					self.degTrans.set_active(int(self.unsaved[i]['deg-trans']))
+				if 'layer' in self.unsaved[i]:
+					self.layer_combo.set_active(self.unsaved[i]['layer'])
+	
 	def do_save_bar(self):
 		box = Gtk.Box()
-		self.seqName = Gtk.Entry()
-		self.seqName.set_text("my-sequence-name")
-		box.add(self.seqName)
+		
 		
 		self.saveBtn = Gtk.Button("Save")
 		self.saveBtn.connect("clicked", self.on_save_clicked)
 		box.pack_start(self.saveBtn, False, False, 0)
-		
+		box.set_child_packing(self.saveBtn, False, True, 0, 1)
+
+		name_store = Gtk.ListStore(str)
+		for key in sorted(self.sequences.iterkeys()):
+			name_store.append([key])
+		self.seqName = Gtk.ComboBox.new_with_model_and_entry(name_store)
+		self.seqName.connect("changed", self.load_saved_seq)
+		self.seqName.set_entry_text_column(0)
+
+		box.add(self.seqName)
+		box.set_child_packing(self.seqName, False, True, 0, 1)
+				
 		self.vbox.add(box)
         
+	def load_saved_seq(self, combo):
+		tree_iter = combo.get_active_iter()
+		if tree_iter != None:
+			model = combo.get_model()
+			name = model[tree_iter][0]
+			out = {}
+			for item in self.sequences[name].iterkeys():
+				out[int(item)] = self.sequences[name][item]
+			self.unsaved = out
+			self.display_adjustments()
+			self.focus_row(1)
+	
 	def on_save_clicked(self,btn):
-		nm = self.seqName.get_text()
+		win = self.mainWin
+		tree_iter = self.seqName.get_active_iter()
+		if tree_iter != None:
+			model = self.seqName.get_model()
+			nm = model[tree_iter][0]
+		else:
+			entry = self.seqName.get_child()
+			nm = entry.get_text()
 		self.sequences[nm] = self.unsaved
 		target = open(self.fJson, 'w')
 		target.truncate()
 		target.write(json.dumps(self.sequences))
-		self.mainWin.sequences = self.sequences 
-		self.mainWin.set_seq_liststore(self.mainWin.seq_store)
-		self.mainWin.seqCombo.set_active(0)
+		target.close()
+		win.sequences = win._Sequencer.get_sequences()
+		win._Sequencer.set_seq_liststore(win.seq_store)
+		win.seqCombo.set_active(0)
 		self.destroy()
 
 class Sequencer():
@@ -309,40 +537,82 @@ class Sequencer():
 			return key
 
 	def build_sequence(self,seq):
-		seq = collections.OrderedDict(sorted(seq.items(), key=lambda t: self.get_seq_key(t[0])))
-		self.mainWin.sequence = seq.copy()
-		i = 1
-		zoom_trans = '0'
-		deg_trans = '0'
-		last_frame = None
-		for frame in seq.iterkeys():
-			if last_frame != None:
-				if int(zoom_trans) + int(deg_trans) > 0:
-					self.build_seq_trans(seq, frame, last_frame, zoom_trans, deg_trans)
-			zoom_trans = seq[frame]['zoom-trans']
-			deg_trans = seq[frame]['deg-trans']
-			last_frame = frame
+		S = collections.OrderedDict(sorted(seq.items(), key=lambda t: self.get_seq_key(t[0])))
+		
+		lastEntry = {
+			'zoom':None,
+			'deg':None,
+			'zoom-trans':None,
+			'deg-trans':None
+			}
+		zoom_transitions = {}
+		active_zoom_transition = False
+		deg_transitions = {}
+		active_deg_transition = False
+		for key in S.iterkeys():
+			if  'zoom' in S[key] and S[key]['zoom'] != lastEntry['zoom']:
+				lastEntry['zoom'] = S[key]['zoom']
+				if active_zoom_transition != False:
+					zoom_transitions[active_zoom_transition]['breaks'].append(int(key))
+			
+			if  'zoom-trans' in S[key] and S[key]['zoom-trans'] != lastEntry['zoom-trans']:
+				lastEntry['zoom-trans'] = S[key]['zoom-trans']
+				if S[key]['zoom-trans'] == 0:
+					active_zoom_transition = False
+				else:
+					zoom_transitions[key] = {'type':S[key]['zoom-trans'],'breaks':[]}
+					active_zoom_transition = key
+			
+			if  'deg' in S[key] and S[key]['deg'] != lastEntry['deg']:
+				lastEntry['deg'] = S[key]['deg']
+				if active_deg_transition != False:
+					deg_transitions[active_deg_transition]['breaks'].append(int(key))
+					
+			if  'deg-trans' in S[key] and S[key]['deg-trans'] != lastEntry['deg-trans']:
+				lastEntry['deg-trans'] = S[key]['deg-trans']
+				if S[key]['deg-trans'] == 0:
+					active_deg_transition = False
+				else:
+					deg_transitions[key] = {'type':S[key]['deg-trans'],'breaks':[]}
+					active_deg_transition = key
+		
+		
+		self.build_transitions(zoom_transitions,'zoom',S)	
+		self.build_transitions(deg_transitions,'deg',S)
+		self.mainWin.sequence = collections.OrderedDict(sorted(S.items(), key=lambda t: self.get_seq_key(t[0])))
 
-	def build_seq_trans(self, seq, f, lf, zt, dt):
-		zt_start_val = float(seq[lf]['zoom'])
-		zt_end_val = float(seq[f]['zoom'])
-		zt_span = zt_end_val - zt_start_val
-		deg_start_val = float(seq[lf]['deg'])
-		deg_end_val = float(seq[f]['deg'])
-		deg_span = deg_end_val - deg_start_val
-		frame_span = int(f) - int(lf)
-		for i in range(int(lf)+1,int(f)):
-			self.mainWin.sequence[str(i)] = seq[lf].copy()
-			pos = i-int(lf)
-			if zt_span>0 or zt_span<0:
-				self.mainWin.sequence[str(i)]['zoom'] = seq[lf]['zoom'] + (pos*(zt_span/frame_span))
-				print seq[lf]['zoom'] + (pos*(zt_span/frame_span))
-			if deg_span>0 or deg_span<0:
-				self.mainWin.sequence[str(i)]['deg'] = seq[lf]['deg'] + (pos*(deg_span/frame_span))
+	
+	def build_transitions(self, trans, typ, seq):
+		for k in trans.iterkeys():
+			start = k
+			for end in trans[k]['breaks']:
+				self.build_transition(start, str(end), typ, seq)
+				start = str(end)
+					
+	def build_transition(self, start, end, typ, seq):
+		
+		trans_start = seq[start][typ]
+		trans_end = seq[end][typ]
+		trans_dif = trans_end - trans_start
+		span = int(end) - int(start)
+		for i in xrange(int(start)+1, int(end)):
+			pos = i-int(start)
+			val = trans_start + (pos*(trans_dif/span))
+			if str(i) not in seq:
+				seq[str(i)] = {}
+			seq[str(i)][typ] = val
 
-    def do_seq_adjust(self, i):
-        self.iterSpin.set_value(self.sequence[i]['iters'])
-        self.octaveSpin.set_value(self.sequence[i]['octaves'])
-        self.scaleSpin.set_value(self.sequence[i]['scale'])
-        self.zoomSpin.set_value(self.sequence[i]['zoom'])
-        self.degSpin.set_value(self.sequence[i]['deg'])
+	def do_seq_adjust(self, i):
+		if i in self.mainWin.sequence:
+			if 'iters' in self.mainWin.sequence[i]:
+				self.mainWin.iterSpin.set_value(self.mainWin.sequence[i]['iters'])
+			if 'octaves' in self.mainWin.sequence[i]:
+				self.mainWin.octaveSpin.set_value(self.mainWin.sequence[i]['octaves'])
+			if 'scale' in self.mainWin.sequence[i]:
+				self.mainWin.scaleSpin.set_value(self.mainWin.sequence[i]['scale'])
+			if 'zoom' in self.mainWin.sequence[i]:
+				self.mainWin.zoomSpin.set_value(self.mainWin.sequence[i]['zoom'])
+			if 'deg' in self.mainWin.sequence[i]:
+				self.mainWin.degSpin.set_value(self.mainWin.sequence[i]['deg'])
+			if 'layer' in self.mainWin.sequence[i]:
+				self.mainWin.layer_combo.set_active(int(self.mainWin.sequence[i]['layer']))
