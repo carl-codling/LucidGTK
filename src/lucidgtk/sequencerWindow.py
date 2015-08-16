@@ -84,7 +84,6 @@ class SequencerWindow(Gtk.Window):
 		btn.connect("clicked", self.insert_val, 'iters', self.iterSpin)
 		box.add(btn)
 		self.adjBar.pack_start(box, False, False, 0)
-		self.unsaved[1]['iters'] = iter_val
 
 		box = Gtk.Box(homogeneous = True)
 		octv_val = S.get_int('n-octaves')
@@ -100,7 +99,6 @@ class SequencerWindow(Gtk.Window):
 		btn.connect("clicked", self.insert_val, 'octaves', self.octaveSpin)
 		box.add(btn)
 		self.adjBar.pack_start(box, False, False, 0)
-		self.unsaved[1]['octaves'] = octv_val
 
 		box = Gtk.Box(homogeneous = True)
 		octv_scale = S.get_double('octave-scale')
@@ -116,7 +114,6 @@ class SequencerWindow(Gtk.Window):
 		btn.connect("clicked", self.insert_val, 'scale', self.scaleSpin)
 		box.add(btn)
 		self.adjBar.pack_start(box, False, False, 0)
-		self.unsaved[1]['scale'] = octv_scale
 
 		box = Gtk.Box(homogeneous = True)
 		zoom_scale = S.get_double('zoom-scale')
@@ -132,8 +129,7 @@ class SequencerWindow(Gtk.Window):
 		btn.connect("clicked", self.insert_val, 'zoom', self.zoomSpin)
 		box.add(btn)
 		self.adjBar.pack_start(box, False, False, 0)
-		self.unsaved[1]['zoom'] = zoom_scale
-
+		
 		box = Gtk.Box(homogeneous = True)
 		label = Gtk.Label("Zoom Transition:")
 		box.add(label)
@@ -150,7 +146,6 @@ class SequencerWindow(Gtk.Window):
 		btn.connect("clicked", self.insert_actv, 'zoom-trans','zoom', self.zoomTrans, self.zoomSpin)
 		box.add(btn)
 		self.adjBar.pack_start(box, False, False, 0)
-		self.unsaved[1]['zoom-trans'] = 0
 
 		box = Gtk.Box(homogeneous = True)
 		deg_val = S.get_double('rot-deg')
@@ -166,7 +161,6 @@ class SequencerWindow(Gtk.Window):
 		btn.connect("clicked", self.insert_val, 'deg', self.degSpin)
 		box.add(btn)
 		self.adjBar.pack_start(box, False, False, 0)
-		self.unsaved[1]['deg'] = round(deg_val,3)
 
 
 		box = Gtk.Box(homogeneous = True)
@@ -185,14 +179,12 @@ class SequencerWindow(Gtk.Window):
 		btn.connect("clicked", self.insert_actv, 'deg-trans','deg', self.degTrans, self.degSpin)
 		box.add(btn)
 		self.adjBar.pack_start(box, False, False, 0)
-		self.unsaved[1]['deg-trans'] = 0
 
 		box = Gtk.Box(homogeneous = True)
 		label = Gtk.Label("Output Layer:")
 		box.add(label)
 		box.add(self.make_layer_select())
 		self.adjBar.pack_start(box, False, False, True)
-		self.unsaved[1]['layer'] = 0
 		
 		box = Gtk.Box(homogeneous = True)
 		label = Gtk.Label(" ")
@@ -201,8 +193,20 @@ class SequencerWindow(Gtk.Window):
 		btn.connect("clicked", self.insert_layer)
 		box.add(btn)
 		self.adjBar.pack_start(box, False, False, 0)
-
+		self.set_default_first_row()
 		self.box.add(self.adjBar)
+	
+	def set_default_first_row(self):
+		S = self.settings
+		self.unsaved[1] = {}
+		self.unsaved[1]['iters'] = S.get_int('n-iterations')
+		self.unsaved[1]['layer'] = 0
+		self.unsaved[1]['deg-trans'] = 0
+		self.unsaved[1]['deg'] = round(S.get_double('rot-deg'),3)
+		self.unsaved[1]['zoom-trans'] = 0
+		self.unsaved[1]['zoom'] = S.get_double('zoom-scale')
+		self.unsaved[1]['scale'] = S.get_double('octave-scale')
+		self.unsaved[1]['octaves'] = S.get_int('n-octaves')
 	
 	def insert_val(self, btn, col, valobj):
 		row = int(self.loopSpin.get_value())
@@ -446,7 +450,11 @@ class SequencerWindow(Gtk.Window):
 	def do_save_bar(self):
 		box = Gtk.Box()
 		
-		
+		self.delBtn = Gtk.Button("Delete")
+		self.delBtn.connect("clicked", self.on_del_clicked)
+		box.pack_start(self.delBtn, False, False, 0)
+		box.set_child_packing(self.delBtn, False, True, 0, 1)
+
 		self.saveBtn = Gtk.Button("Save")
 		self.saveBtn.connect("clicked", self.on_save_clicked)
 		box.pack_start(self.saveBtn, False, False, 0)
@@ -477,15 +485,12 @@ class SequencerWindow(Gtk.Window):
 			self.focus_row(1)
 	
 	def on_save_clicked(self,btn):
-		win = self.mainWin
-		tree_iter = self.seqName.get_active_iter()
-		if tree_iter != None:
-			model = self.seqName.get_model()
-			nm = model[tree_iter][0]
-		else:
-			entry = self.seqName.get_child()
-			nm = entry.get_text()
+		nm = self.get_seq_entry_name()
 		self.sequences[nm] = self.unsaved
+		self.save_to_json()
+		
+	def save_to_json(self):
+		win = self.mainWin
 		target = open(self.fJson, 'w')
 		target.truncate()
 		target.write(json.dumps(self.sequences))
@@ -493,7 +498,23 @@ class SequencerWindow(Gtk.Window):
 		win.sequences = win._Sequencer.get_sequences()
 		win._Sequencer.set_seq_liststore(win.seq_store)
 		win.seqCombo.set_active(0)
-		self.destroy()
+	
+	def get_seq_entry_name(self):
+		tree_iter = self.seqName.get_active_iter()
+		if tree_iter != None:
+			model = self.seqName.get_model()
+			return model[tree_iter][0]
+		else:
+			entry = self.seqName.get_child()
+			return entry.get_text()
+	
+	def on_del_clicked(self, btn):
+		nm = self.get_seq_entry_name()
+		self.sequences.pop(nm, None)
+		self.save_to_json()
+		self.unsaved = {}
+		self.set_default_first_row()
+		self.display_adjustments()
 
 class Sequencer():
 	
