@@ -534,7 +534,7 @@ class Sequencer():
 		store.append(['On the fly'])
 		for k in self.mainWin.sequences.iterkeys():
 			store.append([k])
-		store.append(['Add New Sequence'])
+		store.append(['Manage Sequences'])
 
 	def set_sequence(self, combo):
 		tree_iter = combo.get_active_iter()
@@ -543,7 +543,7 @@ class Sequencer():
 			seq = model[tree_iter][0]
 			if seq == 'On the fly':
 				self.mainWin.sequence = None
-			elif seq == 'Add New Sequence':
+			elif seq == 'Manage Sequences':
 				self.mainWin.sequencer_win(False)
 				self.mainWin.sequence = None
 				self.mainWin.seqCombo.set_active(0)
