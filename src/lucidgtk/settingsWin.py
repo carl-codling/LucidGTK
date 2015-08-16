@@ -25,10 +25,11 @@ class SettingsWindow(Gtk.Window):
 
     def __init__(self, mainWin):
 		self.mainWin = mainWin
+		self.mainWin.hide()
 		self.settings = Gio.Settings('org.rebelweb.dreamer')
 
 		Gtk.Window.__init__(self, title="Lucid-GTK Settings")
-
+		self.connect("delete-event", self.on_close)
 		self.set_border_width(10)
 
 		self.box = Gtk.VBox()
@@ -168,7 +169,7 @@ class SettingsWindow(Gtk.Window):
 		self.save.connect("clicked", self.on_save_clicked)
 		self.table.attach(self.save, 2, 3, 9, 10)
 		self.cancel = Gtk.Button('Cancel')
-		self.cancel.connect("clicked", self.on_cancel_clicked)
+		self.cancel.connect("clicked", self.on_close, False)
 		self.table.attach(self.cancel, 3, 4, 9, 10)
 
 		self.add(self.box)
@@ -193,9 +194,11 @@ class SettingsWindow(Gtk.Window):
         while Gtk.events_pending():
             Gtk.main_iteration_do(True)
         self.mainWin.run()
-        
-    def on_cancel_clicked(self, btn):
-        self.destroy()
+           
+    def on_close(self,a,b):
+		print a, b
+		self.destroy()
+		self.mainWin.show()
     
     def on_imdirBtn_clicked(self, btn):
         md = self.settings.get_string('im-dir')
