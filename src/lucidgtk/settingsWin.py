@@ -196,7 +196,6 @@ class SettingsWindow(Gtk.Window):
         self.mainWin.run()
            
     def on_close(self,a,b):
-		print a, b
 		self.destroy()
 		self.mainWin.show()
     

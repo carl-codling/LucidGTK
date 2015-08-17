@@ -27,6 +27,8 @@ class SequencerWindow(Gtk.Window):
 		self.mainWin = mainWin
 		self.settings = Gio.Settings('org.rebelweb.dreamer')
 		Gtk.Window.__init__(self, title="Lucid-GTK Sequencer")
+		self.mainWin.hide()
+		self.connect("delete-event", self.on_close)
 		self.set_border_width(10)
 		self.vbox = Gtk.VBox()
 		self.box = Gtk.Box()
@@ -44,7 +46,10 @@ class SequencerWindow(Gtk.Window):
 		
 		self.show_all()
 		
-
+	def on_close(self,a,b):
+		self.destroy()
+		self.mainWin.show()
+		
 	def do_viewscreen(self):
 		self.vs = Gtk.VBox()
 		label = Gtk.Label("ORDER:")
@@ -257,7 +262,7 @@ class SequencerWindow(Gtk.Window):
 		self.layer_combo.add_attribute(renderer_text, "text", 1)
 		self.layer_combo.set_active(0)
 		return self.layer_combo
-        
+		
 	def on_add_clicked(self, btn):
 		self.unsaved[int(self.loopSpin.get_value())] = {
 			'iters':self.iterSpin.get_value(),
@@ -471,7 +476,7 @@ class SequencerWindow(Gtk.Window):
 		box.set_child_packing(self.seqName, False, True, 0, 1)
 				
 		self.vbox.add(box)
-        
+		
 	def load_saved_seq(self, combo):
 		tree_iter = combo.get_active_iter()
 		if tree_iter != None:
@@ -549,8 +554,8 @@ class Sequencer():
 				self.mainWin.seqCombo.set_active(0)
 			else:
 				self.build_sequence(self.mainWin.sequences[seq])
-        
-    
+		
+	
 	def get_seq_key(self,key):
 		try:
 			return int(key)
