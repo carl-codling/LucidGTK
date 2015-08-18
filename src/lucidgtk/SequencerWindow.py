@@ -49,7 +49,7 @@ class SequencerWindow(Gtk.Window):
 		
 	def on_close(self,a,b):
 		self.destroy()
-		self.sequencerWin = False
+		self.mainWin.sequencerWin = False
 		self.mainWin.show()
 		
 	def do_viewscreen(self):
