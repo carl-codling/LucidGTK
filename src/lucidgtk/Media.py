@@ -74,7 +74,7 @@ class LucidImage():
 		h = pb.get_height()
 		bytesize = pb.get_byte_length()
 		limit = int(self.settings.get_int('max-bytes'))
-		
+			
 		if bytesize > limit:
 			w, h = self.get_shrink_dimensions(w, h, bytesize, limit, ch=ch)
 			pbnew = pb.scale_simple(w, h, 3)
@@ -86,6 +86,9 @@ class LucidImage():
 	def display_image(self, im):
 		self.imagef = im
 		pb = Pixbuf.new_from_file(im)
+		if pb.get_n_channels()>3:
+			self.mainWin.notify('Sorry, Lucid-GTK doesn\'t currently support images with an alpha channel (such as PNG with transparency).\nIn order to use this image you need to flatten it to RGB in an image editor', color='red')
+			return
 		pb = self.check_im_size(pb)
 		self.mainWin.imContainer.set_size(pb.get_width(),pb.get_height())
 		self.mainWin.im.set_from_pixbuf(pb)
@@ -128,6 +131,7 @@ class LucidVid():
 		self.h = None
 		self.fps = None
 		self.nframes = None
+		self.first_frame = None
 		
 	def write_frame(self, colorSwitch='BGR2RGB'):
 		imgout = self.DD.prepare_image()
@@ -152,6 +156,12 @@ class LucidVid():
 		self.h = h
 		self.nframes = cap.get(7)
 		self.fps = cap.get(5)
+		frame = self.get_next_frame()
+		self.first_frame = frame
+		frame = self.resize_frame(frame)
+		imname = self.LucidImage.tempImagePath
+		frame.save(imname)
+		self.LucidImage.display_image(imname)
 		return cap
 
 	def init_outp_vid(self):

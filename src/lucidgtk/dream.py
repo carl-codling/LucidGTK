@@ -33,6 +33,7 @@ from gi.repository.GdkPixbuf import Pixbuf
 
 import json
 import cv2
+import math
 
 from lucidgtk.DeepDream import DeepDream
 from lucidgtk.SettingsWindow import SettingsWindow
@@ -98,6 +99,7 @@ class DreamWindow(Gtk.Window):
 		self.do_status_bar()
 		self.do_notifications_bar()
 		self.show_all()
+		self.on_inp_combo_changed(self.inpCombo)
 		self.closeNotifierBtn.hide()
 		self.wakeBtn.hide()
 		loading.destroy()
@@ -238,10 +240,69 @@ class DreamWindow(Gtk.Window):
 		
 		targ.set_markup('<span'+string+'>'+msg+'</span>')
 	
+	def do_video_adjustments(self):
+		
+		self.fpsSpinLabel = Gtk.Label("FPS:")
+		self.adjBar.add(self.fpsSpinLabel)
+		adjustment = Gtk.Adjustment(self.settings.get_int('fps'), 5, 300, 1, 0, 0)
+		self.fpsSpin = Gtk.SpinButton()
+		self.fpsSpin.set_adjustment(adjustment)
+		self.fpsSpin.set_value(self.settings.get_int('fps'))
+		self.fpsSpin.set_numeric(1)
+		self.fpsSpin.connect("changed", self.updFPS)
+		self.adjBar.pack_start(self.fpsSpin, False, False, 0)
+		
+		self.strtFrmSpinLabel = Gtk.Label("Start @:")
+		self.adjBar.add(self.strtFrmSpinLabel)
+		adjustment = Gtk.Adjustment(0, 0, 10000, 1, 0, 0)
+		self.strtFrmSpin = Gtk.SpinButton()
+		self.strtFrmSpin.set_adjustment(adjustment)
+		self.strtFrmSpin.set_value(0)
+		self.strtFrmSpin.set_numeric(1)
+		self.strtFrmSpin.connect("changed", self.updEndFrmSpin)
+		self.adjBar.pack_start(self.strtFrmSpin, False, False, 0)
+		
+		self.endFrmSpinLabel = Gtk.Label("End @:")
+		self.adjBar.add(self.endFrmSpinLabel)
+		adjustment = Gtk.Adjustment(0, 0, 10000, 1, 0, 0)
+		self.endFrmSpin = Gtk.SpinButton()
+		self.endFrmSpin.set_adjustment(adjustment)
+		self.endFrmSpin.set_value(0)
+		self.endFrmSpin.set_numeric(1)
+		self.endFrmSpin.connect("changed", self.updStrtFrmSpin)
+		self.adjBar.pack_start(self.endFrmSpin, False, False, 0)
+		
+		self.continuitySpinLabel = Gtk.Label("Continuity:")
+		self.adjBar.add(self.continuitySpinLabel)
+		adjustment = Gtk.Adjustment(0.50, 0.05, 0.95, 0.01, 0, 0)
+		self.continuitySpin = Gtk.SpinButton()
+		self.continuitySpin.configure(adjustment,0.01,2)
+		self.continuitySpin.set_adjustment(adjustment)
+		self.continuitySpin.set_value(0.50)
+		self.continuitySpin.set_numeric(1)
+		self.adjBar.pack_start(self.continuitySpin, False, False, 0)
+
+	def updFPS(self, spin):
+		self.LucidVid.fps = spin.get_value()
+	
+	def updEndFrmSpin(self, spin):
+		strt = spin.get_value()
+		s,e = self.endFrmSpin.get_range()
+		if s!=strt+1:
+			self.endFrmSpin.set_range(strt+1,e)
+		
+	def updStrtFrmSpin(self, spin):
+		end = spin.get_value()
+		s,e = self.strtFrmSpin.get_range()
+		if e != end-1:
+			self.strtFrmSpin.set_range(s,end-1)
+	
 	def do_adjustments_bar(self):
 		self.adjBar = Gtk.Box()
 		ADJ = self.adjustments
 		S = self.settings
+		
+		self.do_video_adjustments()
 		
 		nloops = S.get_int('n-loops')
 		self.loopLabel, self.loopSpin = self.spin_factory(
@@ -367,6 +428,15 @@ class DreamWindow(Gtk.Window):
 				self.degLabel.show()
 				self.loopLabel.show()
 				self.seqCombo.show()
+				self.fpsSpinLabel.hide()
+				self.continuitySpinLabel.hide()
+				self.strtFrmSpinLabel.hide()
+				self.endFrmSpinLabel.hide()
+				self.fpsSpin.hide()
+				self.continuitySpin.hide()
+				self.strtFrmSpin.hide()
+				self.endFrmSpin.hide()
+				
 			elif v==2:
 				self.dreamBtn.hide()
 				self.loopSpin.hide()
@@ -376,6 +446,14 @@ class DreamWindow(Gtk.Window):
 				self.degLabel.hide()
 				self.loopLabel.hide()
 				self.seqCombo.hide()
+				self.fpsSpinLabel.show()
+				self.continuitySpinLabel.show()
+				self.strtFrmSpinLabel.show()
+				self.endFrmSpinLabel.show()
+				self.fpsSpin.show()
+				self.continuitySpin.show()
+				self.strtFrmSpin.show()
+				self.endFrmSpin.show()
 				
 	
 	def do_top_bar(self):
@@ -515,8 +593,15 @@ class DreamWindow(Gtk.Window):
 			return ret
 		else:
 			return True
-	
+			
 	def on_dream_clicked(self, button):
+		mode = self.get_input_mode()
+		if mode ==1:
+			self.image_dream()
+		if mode ==2:
+			self.video_dream()
+	
+	def image_dream(self):
 		if self.is_outp_set() == False:
 			return
 		self.mode = 'image'
@@ -583,7 +668,7 @@ class DreamWindow(Gtk.Window):
 		if t is 1:
 			self.on_fselect_clicked()
 		elif t is 2:
-			self.on_vidbtn_clicked()
+			self.select_video()
 			
 	def get_input_mode(self):
 		tree_iter = self.inpCombo.get_active_iter()
@@ -614,6 +699,99 @@ class DreamWindow(Gtk.Window):
 			print("Cancel clicked")
 
 		dialog.destroy()
+		
+	def select_video(self):
+		dialog = VideoChooser(self)
+		response = dialog.run()
+		
+		if response == Gtk.ResponseType.OK:
+			
+			self.path = dialog.get_filename()
+			fname = basename(self.path)
+			nm = os.path.splitext(fname)[0]
+			self.imageName.set_text(nm)
+			
+			self.LucidVid.init_input_vid(self.path)
+		
+			total_frames = self.LucidVid.nframes
+			self.strtFrmSpin.set_range(0,total_frames-1)
+			self.strtFrmSpin.set_value(0)
+			self.endFrmSpin.set_range(1,total_frames)
+			self.endFrmSpin.set_value(total_frames)
+			
+			fps = self.LucidVid.fps
+		
+			# It seems that opencv can't read the fps on certain videos and returns NaN. In this instance set to default
+			if math.isnan(fps):
+				fps = self.settings.get_int('fps')
+				self.notify('!! Failed to retrieve frame rate from source, deferred to default !!', color='red')
+			self.dreamBtn.show()
+			self.fpsSpin.set_value(fps)
+		dialog.destroy()
+		
+		
+	def video_dream(self):
+		if self.is_outp_set() == False:
+			return
+	
+		self.wakeBtn.show()
+		self.mode = 'video'
+		
+		outpType = self.get_output_mode()
+		
+		if outpType > 1:
+			out = self.LucidVid.init_outp_vid()
+			
+		self.loop = 0
+		self.enable_buttons(False)
+		while(True):
+			if self.loop >= self.strtFrmSpin.get_value():
+				if self.loop >= self.endFrmSpin.get_value():
+					break
+					
+				if self.wakeup:
+					break
+				
+				self.set_status(self.string['dreaming'], fg='white', bg='blue', weight='heavy')
+				
+				if self.loop>0:
+					frame = self.LucidVid.get_next_frame()
+				else:
+					frame = self.LucidVid.first_frame
+				
+				if frame is None:
+					break
+				
+				src = self.LucidVid.resize_frame(frame)
+				
+				if self.loop>0:
+					overl = PIL.Image.open(self.LucidImage.tempImagePath)
+					image = PIL.Image.blend(src, overl, self.continuitySpin.get_value())
+				else:
+					image = src
+				
+				imname = self.LucidImage.tempImagePath
+				image.save(imname)
+				self.LucidImage.display_image(imname)
+					
+				img = self.DD.prepare_image()
+				
+				self.DD.deepdream(self.DD.net, img)
+				
+				if outpType == 1 or outpType == 3:
+					self.LucidImage.save_image()
+					
+				if outpType > 1:  
+					self.LucidVid.write_frame(colorSwitch='RGB2BGR')
+			
+			self.loop += 1
+		self.LucidVid.close_session()
+		self.dreamBtn.hide()
+		self.wakeBtn.hide()
+		self.wakeup = False
+		self.enable_buttons()
+		self.set_info("")
+		self.set_status(self.string['ready'], fg='blue')
 
 class HelpDialog(Gtk.MessageDialog):
 
@@ -681,7 +859,37 @@ class ImageChooser(Gtk.FileChooserDialog):
 		filter_any.add_mime_type("image/pjpeg")
 		filter_any.add_mime_type("image/jpeg")
 		self.add_filter(filter_any)
+
+class VideoChooser(Gtk.FileChooserDialog):
+
+	def __init__(self, parent):
+		Gtk.FileChooserDialog.__init__(self, "Please choose a video file", parent,
+			Gtk.FileChooserAction.OPEN,
+			(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+			 Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+
+		md = parent.settings.get_string('vid-search-dir')
 		
+		if len(md) > 0 and os.path.isdir(md):
+			self.set_current_folder(md)
+		
+		self.add_filters()
+		self.show_all()
+	
+	def add_filters(self):
+		filter_vids = Gtk.FileFilter()
+		filter_vids.set_name("Videos")
+		filter_vids.add_mime_type("video/mp4")
+		filter_vids.add_mime_type("video/x-flv")
+		filter_vids.add_mime_type("video/MP2T")
+		filter_vids.add_mime_type("video/3gpp")
+		filter_vids.add_mime_type("video/quicktime")
+		filter_vids.add_mime_type("video/x-msvideo")
+		filter_vids.add_mime_type("video/x-ms-wmv")
+		filter_vids.add_mime_type("video/ogg")
+		filter_vids.add_mime_type("video/webm")
+		filter_vids.add_mime_type("application/x-mpegURL")
+		self.add_filter(filter_vids)		
  
 class NoOutpDialog(Gtk.Dialog):
 
