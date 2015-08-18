@@ -66,6 +66,10 @@ class DreamWindow(Gtk.Window):
 		self.LucidImage = LucidImage(self)
 		self.LucidVid = LucidVid(self)
 		
+		self.vidWin = False
+		self.settingsWin = False
+		self.sequencerWin = False
+		
 		GlobalMenu(self)
 		loading = self.loading()
 		
@@ -91,13 +95,35 @@ class DreamWindow(Gtk.Window):
 		self.do_info_bar()
 		self.set_image(self.LucidImage.tempImagePath)
 		self.do_bottom_bar()
-		self.do_notif_bar()
+		self.do_status_bar()
+		self.do_notifications_bar()
 		self.show_all()
+		self.closeNotifierBtn.hide()
 		self.wakeBtn.hide()
 		loading.destroy()
 
+	def do_notifications_bar(self):
+		self.notifierBar = Gtk.Box()
+		self.notifier = Gtk.Label('')
+		self.notifierBar.add(self.notifier)
+		self.closeNotifierBtn = Gtk.Button('OK')
+		self.notifierBar.add(self.closeNotifierBtn)
+		self.closeNotifierBtn.connect("clicked", self.close_notifier)
+		self.grid.attach_next_to(self.notifierBar, self.topBar, Gtk.PositionType.TOP, 1, 3)
+	
+	def close_notifier(self, btn):
+		btn.hide()
+		self.notifier.set_text('')
+		
+	def notify(self, msg, color='green'):
+		self.closeNotifierBtn.show()
+		self.notifier.set_markup('<span foreground="'+color+'">'+msg+'</span>')
+	
 	def sequencer_win(self,b):
-		SequencerWindow(self)
+		if self.sequencerWin:
+			self.sequencerWin.show()
+		else:
+			self.sequencerWin = SequencerWindow(self)
 		
 	def loading(self):
 		loading = Gtk.Label('Lucid-GTK now loading...')
@@ -164,15 +190,15 @@ class DreamWindow(Gtk.Window):
 			raise Exception("No output layer is set!")
 			return False
 
-	def do_notif_bar(self):
-		self.notifBar = Gtk.Box(spacing=10)
+	def do_status_bar(self):
+		self.statusBar = Gtk.Box(spacing=10)
 		label = Gtk.Label("Status: ")
 		label.set_markup('<span size="larger">Status: </span>')
-		self.notifBar.add(label)
-		self.notif = Gtk.Label("Ready")
-		self.set_notif(self.string['ready'], fg='blue')
-		self.notifBar.add(self.notif)
-		self.grid.attach_next_to(self.notifBar, self.bottBar, Gtk.PositionType.BOTTOM, 1, 3)
+		self.statusBar.add(label)
+		self.status = Gtk.Label("Ready")
+		self.set_status(self.string['ready'], fg='blue')
+		self.statusBar.add(self.status)
+		self.grid.attach_next_to(self.statusBar, self.bottBar, Gtk.PositionType.BOTTOM, 1, 3)
 		
 	
 	def do_info_bar(self):
@@ -185,15 +211,21 @@ class DreamWindow(Gtk.Window):
 		self.infoLabel.set_markup('<span color="green">'+msg+'</span>')
 	   
 	def on_settings_clicked(self,btn):
-		SettingsWindow(self)
+		if self.settingsWin:
+			self.settingsWin.show()
+		else:
+			self.settingsWin = SettingsWindow(self)
 	
 	
 	def on_vidbtn_clicked(self):
-		self.vidWin = VideoWindow(self)
+		if self.vidWin:
+			self.vidWin.show()
+		else:
+			self.vidWin = VideoWindow(self)
 	
-	def set_notif(self, msg, fg=None, bg=None, size='larger', weight=None, targ=False):
+	def set_status(self, msg, fg=None, bg=None, size='larger', weight=None, targ=False):
 		if targ==False:
-			targ = self.notif
+			targ = self.status
 		string = ' '
 		if fg!=None:
 			string += 'foreground="'+fg+'" '
@@ -396,7 +428,7 @@ class DreamWindow(Gtk.Window):
 	  
 	
 	def on_wake_clicked(self, btn):
-		self.set_notif(self.string['waking'], fg='black', bg='orange', weight='heavy')
+		self.set_status(self.string['waking'], fg='black', bg='orange', weight='heavy')
 		self.wakeup = True
 		while Gtk.events_pending():
 			Gtk.main_iteration_do(True)
@@ -489,7 +521,7 @@ class DreamWindow(Gtk.Window):
 			return
 		self.mode = 'image'
 		self.enable_buttons(False)
-		self.set_notif(self.string['dreaming'],fg='white',bg='blue',weight='heavy')
+		self.set_status(self.string['dreaming'],fg='white',bg='blue',weight='heavy')
 		self.wakeBtn.show()	
 		while Gtk.events_pending():
 			Gtk.main_iteration_do(True)
@@ -528,7 +560,7 @@ class DreamWindow(Gtk.Window):
 				self.LucidImage.save_image()
 
 		self.set_info("")
-		self.set_notif(self.string['ready'], fg='blue') 
+		self.set_status(self.string['ready'], fg='blue') 
 		
 		if outpType > 1:
 			self.LucidVid.close_session()  
@@ -537,32 +569,16 @@ class DreamWindow(Gtk.Window):
 		self.enable_buttons()
 		
 	def on_about_clicked(self, item):
-		dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "About Lucid-GTK")
-		box = dialog.get_content_area()
-		label = Gtk.Label()
-		label.set_markup('<span weight="heavy">'+self.package+'</span>')
-		box.add(label)
-		label = Gtk.Label()
-		label.set_markup('<span weight="light">'+self.version+'</span>')
-		box.add(label)
-		im = Gtk.Image()
-		pb = Pixbuf.new_from_file(self.LucidImage.get_lucid_icon(256))
-		im.set_from_pixbuf(pb)
-		box.add(im)
-		label = Gtk.Label('Author: Carl Codling | lucid@rebelweb.co.uk')
-		box.add(label)
-		
-		dialog.show_all()
+		dialog = AboutDialog(self)
 		dialog.run()
 		dialog.destroy()
 		
 	def on_help_clicked(self, item):
-		dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "Lucid-GTK Help")
-		dialog.format_secondary_text("Lucid-GTK is currently in Beta and documentation is lacking, a usage screencast can be found at http://rebelweb.co.uk/lucid-gtk or for bug reporting you can create an 'issue' at https://github.com/carl-codling/LucidGTK/issues")
+		dialog = HelpDialog(self)
 		dialog.run()
 		dialog.destroy()
 	
-	def on_fBtn_clicked(self, combo):
+	def on_fBtn_clicked(self, btn):
 		t = self.get_input_mode()
 		if t is 1:
 			self.on_fselect_clicked()
@@ -583,17 +599,7 @@ class DreamWindow(Gtk.Window):
 		
 	
 	def on_fselect_clicked(self):
-		dialog = Gtk.FileChooserDialog("Please choose a file", self,
-			Gtk.FileChooserAction.OPEN,
-			(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-			 Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
-
-		self.add_filters(dialog)
-		
-		md = self.settings.get_string('im-search-dir')
-		
-		if len(md) > 0 and os.path.isdir(md):
-			dialog.set_current_folder(md) 
+		dialog = ImageChooser(self)
 		
 		response = dialog.run()
 		if response == Gtk.ResponseType.OK:
@@ -609,22 +615,64 @@ class DreamWindow(Gtk.Window):
 
 		dialog.destroy()
 
-	def add_filters(self, dialog):
+class HelpDialog(Gtk.MessageDialog):
+
+	def __init__(self, parent):
+		Gtk.MessageDialog.__init__(self, parent, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "Lucid-GTK Help")
+		self.format_secondary_text("Lucid-GTK is currently in Beta and documentation is lacking, a usage screencast can be found at http://rebelweb.co.uk/lucid-gtk or for bug reporting you can create an 'issue' at https://github.com/carl-codling/LucidGTK/issues")
+
+class AboutDialog(Gtk.MessageDialog):
+
+	def __init__(self, parent):
+		Gtk.MessageDialog.__init__(self, parent, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK, "About Lucid-GTK")
+		box = self.get_content_area()
+		label = Gtk.Label()
+		label.set_markup('<span weight="heavy">'+parent.package+'</span>')
+		box.add(label)
+		label = Gtk.Label()
+		label.set_markup('<span weight="light">'+parent.version+'</span>')
+		box.add(label)
+		im = Gtk.Image()
+		pb = Pixbuf.new_from_file(parent.LucidImage.get_lucid_icon(256))
+		im.set_from_pixbuf(pb)
+		box.add(im)
+		label = Gtk.Label('Author: Carl Codling | lucid@rebelweb.co.uk')
+		box.add(label)
+		
+		self.show_all()
+
+class ImageChooser(Gtk.FileChooserDialog):
+
+	def __init__(self, parent):
+		Gtk.FileChooserDialog.__init__(self, "Please choose an image file", parent,
+			Gtk.FileChooserAction.OPEN,
+			(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+			 Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+
+		md = parent.settings.get_string('im-search-dir')
+		
+		if len(md) > 0 and os.path.isdir(md):
+			self.set_current_folder(md)
+		
+		self.add_filters()
+		self.show_all()
+	
+	def add_filters(self):
 		filter_JPEG = Gtk.FileFilter()
 		filter_JPEG.set_name("JPEG")
 		filter_JPEG.add_mime_type("image/pjpeg")
 		filter_JPEG.add_mime_type("image/jpeg")
-		dialog.add_filter(filter_JPEG)
+		self.add_filter(filter_JPEG)
 
 		filter_PNG = Gtk.FileFilter()
 		filter_PNG.set_name("PNG")
 		filter_PNG.add_mime_type("image/png")
-		dialog.add_filter(filter_PNG)
+		self.add_filter(filter_PNG)
 
 		filter_GIF = Gtk.FileFilter()
 		filter_GIF.set_name("GIF")
 		filter_GIF.add_mime_type("image/gif")
-		dialog.add_filter(filter_GIF)
+		self.add_filter(filter_GIF)
 
 		filter_any = Gtk.FileFilter()
 		filter_any.set_name("All images")
@@ -632,13 +680,13 @@ class DreamWindow(Gtk.Window):
 		filter_any.add_mime_type("image/gif")
 		filter_any.add_mime_type("image/pjpeg")
 		filter_any.add_mime_type("image/jpeg")
-		dialog.add_filter(filter_any)
+		self.add_filter(filter_any)
 		
  
 class NoOutpDialog(Gtk.Dialog):
 
 	def __init__(self, parent):
-		Gtk.Dialog.__init__(self, "My Dialog", parent, 0,
+		Gtk.Dialog.__init__(self, "No output set", parent, 0,
 			(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
 			 Gtk.STOCK_OK, Gtk.ResponseType.OK))
 

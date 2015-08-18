@@ -115,18 +115,7 @@ class VideoWindow(Gtk.Window):
 			self.strtFrmSpin.set_range(s,end-1)
 	
 	def select_video(self, btn):
-		dialog = Gtk.FileChooserDialog("Please choose a video file", self,
-			Gtk.FileChooserAction.OPEN,
-			(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-			 Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
-		
-		md = self.settings.get_string('vid-search-dir')
-		
-		if len(md) > 0 and os.path.isdir(md):
-			dialog.set_current_folder(md)
-		
-		self.add_filters(dialog)
-
+		dialog = VideoChooser(self)
 		response = dialog.run()
 		
 		if response == Gtk.ResponseType.OK:
@@ -146,10 +135,10 @@ class VideoWindow(Gtk.Window):
 			
 			fps = self.LucidVid.fps
 		
-			# It seems that opencv can't read the fps on certain videos and return NaN. In this instance default to 30
+			# It seems that opencv can't read the fps on certain videos and returns NaN. In this instance set to default
 			if math.isnan(fps):
 				fps = self.settings.get_int('fps')
-				self.mainWin.set_notif(
+				self.mainWin.set_status(
 					'!! Failed to retrieve frame rate from source !!',
 					fg = 'red',
 					bg = 'white',
@@ -160,28 +149,10 @@ class VideoWindow(Gtk.Window):
 			self.fpsSpin.set_value(fps)
 			
 			self.dreamBtn.set_sensitive(True)
-			
-		elif response == Gtk.ResponseType.CANCEL:
-			print("Cancel clicked")
-
+		
 		dialog.destroy()
 
-	def add_filters(self, dialog):
-		filter_vids = Gtk.FileFilter()
-		filter_vids.set_name("Videos")
-		filter_vids.add_mime_type("video/mp4")
-		filter_vids.add_mime_type("video/x-flv")
-		filter_vids.add_mime_type("video/MP2T")
-		filter_vids.add_mime_type("video/3gpp")
-		filter_vids.add_mime_type("video/quicktime")
-		filter_vids.add_mime_type("video/x-msvideo")
-		filter_vids.add_mime_type("video/x-ms-wmv")
-		filter_vids.add_mime_type("video/ogg")
-		filter_vids.add_mime_type("video/webm")
-		filter_vids.add_mime_type("application/x-mpegURL")
-		dialog.add_filter(filter_vids)
-		
-	
+
 	def dream(self,btn):
 	
 		self.mainWin.wakeBtn.show()
@@ -204,7 +175,7 @@ class VideoWindow(Gtk.Window):
 				if self.mainWin.wakeup:
 					break
 				
-				self.mainWin.set_notif(self.mainWin.string['dreaming'], fg='white', bg='blue', weight='heavy')
+				self.mainWin.set_status(self.mainWin.string['dreaming'], fg='white', bg='blue', weight='heavy')
 				
 				# Capture frame-by-frame
 				frame = self.LucidVid.get_next_frame()
@@ -241,14 +212,43 @@ class VideoWindow(Gtk.Window):
 		self.mainWin.wakeup = False
 		self.mainWin.enable_buttons()
 		self.mainWin.set_info("")
-		self.mainWin.set_notif(self.mainWin.string['ready'], fg='blue')
+		self.mainWin.set_status(self.mainWin.string['ready'], fg='blue')
 
 	def on_close(self,a,b):
 		self.destroy()
+		self.mainWin.vidWin = False
 		self.mainWin.show()
 		self.LucidVid.close_session()
 
 
+class VideoChooser(Gtk.FileChooserDialog):
 
+	def __init__(self, parent):
+		Gtk.FileChooserDialog.__init__(self, "Please choose a video file", parent,
+			Gtk.FileChooserAction.OPEN,
+			(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+			 Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
 
+		md = parent.settings.get_string('vid-search-dir')
+		
+		if len(md) > 0 and os.path.isdir(md):
+			self.set_current_folder(md)
+		
+		self.add_filters()
+		self.show_all()
+	
+	def add_filters(self):
+		filter_vids = Gtk.FileFilter()
+		filter_vids.set_name("Videos")
+		filter_vids.add_mime_type("video/mp4")
+		filter_vids.add_mime_type("video/x-flv")
+		filter_vids.add_mime_type("video/MP2T")
+		filter_vids.add_mime_type("video/3gpp")
+		filter_vids.add_mime_type("video/quicktime")
+		filter_vids.add_mime_type("video/x-msvideo")
+		filter_vids.add_mime_type("video/x-ms-wmv")
+		filter_vids.add_mime_type("video/ogg")
+		filter_vids.add_mime_type("video/webm")
+		filter_vids.add_mime_type("application/x-mpegURL")
+		self.add_filter(filter_vids)
 

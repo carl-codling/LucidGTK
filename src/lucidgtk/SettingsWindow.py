@@ -189,7 +189,7 @@ class SettingsWindow(Gtk.Window):
 		self.settings.set_string('proj-dir',self.projdir.get_text())
 		self.settings.set_int('fps',self.fps.get_value())
 		self.settings.set_int('max-bytes',self.maxbyt.get_value())
-		self.destroy()
+		self.hide()
 		self.mainWin.grid.destroy()
 		while Gtk.events_pending():
 			Gtk.main_iteration_do(True)
@@ -197,6 +197,7 @@ class SettingsWindow(Gtk.Window):
 		   
 	def on_close(self,a,b):
 		self.destroy()
+		self.settingsWin = False
 		self.mainWin.show()
 	
 	def on_imdirBtn_clicked(self, btn):
