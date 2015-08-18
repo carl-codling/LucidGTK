@@ -23,12 +23,12 @@ UI_INFO = """
 	  <menu action='EditMenu'>
 		<menuitem action='ShowPrefs' />
 	  </menu>
+	  <menu action='ToolsMenu'>
+		  <menuitem action='ShowSequencer' />
+	  </menu>
 	  <menu action='HelpMenu'>
 		<menuitem action='ShowHelp' />
 		<menuitem action='ShowAbout' />
-	  </menu>
-	  <menu action='ToolsMenu'>
-		  <menuitem action='ShowSequencer' />
 	  </menu>
 	  </menubar>
 </ui>
@@ -69,7 +69,7 @@ class GlobalMenu():
 		action_edit = Gtk.Action("ToolsMenu", "Tools", None, None)
 		action_group.add_action(action_edit)
 
-		action_seq = Gtk.Action("ShowSequencer", "Pre-Sequencer", None, None)
+		action_seq = Gtk.Action("ShowSequencer", "Sequencer", None, None)
 		action_group.add_action(action_seq)
 		action_seq.connect("activate", win.sequencer_win)
 		
