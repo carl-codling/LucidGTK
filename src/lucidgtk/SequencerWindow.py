@@ -25,6 +25,7 @@ class SequencerWindow(Gtk.Window):
 
 	def __init__(self, mainWin):
 		self.mainWin = mainWin
+		self.DD = mainWin.DD
 		self.settings = Gio.Settings('org.rebelweb.dreamer')
 		Gtk.Window.__init__(self, title="Lucid-GTK Sequencer")
 		self.mainWin.hide()
@@ -66,11 +67,12 @@ class SequencerWindow(Gtk.Window):
 		box = Gtk.Box(homogeneous = True)
 		self.loopLabel = Gtk.Label("Adjust @ loop:")
 		box.add(self.loopLabel)
-		adjustment = Gtk.Adjustment(1, ADJ.get_int('loops-min'), ADJ.get_int('loops-max'), ADJ.get_int('loops-incr'), 0, 0)
+		adjustment = Gtk.Adjustment(1, ADJ.get_int('loops-min'), ADJ.get_int('loops-max'), 25, 0, 0)
 		self.loopSpin = Gtk.SpinButton()
 		self.loopSpin.set_adjustment(adjustment)
 		self.loopSpin.set_value(1)
 		self.loopSpin.set_numeric(1)
+		self.loopSpin.set_increments(24,99)
 		box.add(self.loopSpin)
 		self.loopSpin.connect("changed", self.focus_row_from_spin)
 		self.adjBar.pack_start(box, False, False, 0)
@@ -243,7 +245,7 @@ class SequencerWindow(Gtk.Window):
 		
 	def make_layer_select(self):
 		layer_store = Gtk.ListStore(int, str)
-		net = self.mainWin.net
+		net = self.DD.net
 		l = list(net._layer_names)
 		blobs = list(net.blobs)
 		layers = [val for val in l if val in blobs]
@@ -426,7 +428,12 @@ class SequencerWindow(Gtk.Window):
 		self.display_adjustments()
 	
 	def focus_row_from_spin(self, spin):
-		self.focus_row(spin.get_value())
+		v = spin.get_value()
+		if v == 1:
+			spin.set_increments(24,99)
+		else:
+			spin.set_increments(25,100)
+		self.focus_row(v)
 	
 	def focus_row_from_btn(self, btn):
 		self.focus_row(btn.rowid)

@@ -17,9 +17,7 @@
 
 from gi.repository import Gtk, Gio, GLib
 
-import cv2
 import PIL.Image
-import numpy as np
 import os
 from os.path import basename
 import math
@@ -28,6 +26,9 @@ class VideoWindow(Gtk.Window):
 
 	def __init__(self, mainWin):
 		self.mainWin = mainWin
+		self.DD = mainWin.DD
+		self.LucidVid = mainWin.LucidVid
+		self.LucidImage = mainWin.LucidImage
 		self.settings = Gio.Settings('org.rebelweb.dreamer')
 		Gtk.Window.__init__(self, title="DeepDreamsGTK Video Loader")
 		self.mainWin.hide()
@@ -35,6 +36,7 @@ class VideoWindow(Gtk.Window):
 		self.set_border_width(10)
 
 		self.vidContainer = Gtk.VBox(spacing=10)
+		
 
 		vidBtn = Gtk.Button("Select a video")
 		vidBtn.connect("clicked", self.select_video)
@@ -50,6 +52,7 @@ class VideoWindow(Gtk.Window):
 		self.fpsSpin.set_adjustment(adjustment)
 		self.fpsSpin.set_value(self.settings.get_int('fps'))
 		self.fpsSpin.set_numeric(1)
+		self.fpsSpin.connect("changed", self.updFPS)
 		self.fpsBox.pack_start(self.fpsSpin, False, False, 0)
 		self.vidContainer.pack_start(self.fpsBox, True, True, 0)
 		
@@ -95,6 +98,9 @@ class VideoWindow(Gtk.Window):
 		self.add(self.vidContainer)
 		self.show_all()
 	
+	def updFPS(self, spin):
+		self.LucidVid.fps = spin.get_value()
+	
 	def updEndFrmSpin(self, spin):
 		strt = spin.get_value()
 		s,e = self.endFrmSpin.get_range()
@@ -130,21 +136,26 @@ class VideoWindow(Gtk.Window):
 			nm = os.path.splitext(fname)[0]
 			self.mainWin.imageName.set_text(nm)
 			
-			cap = cv2.VideoCapture(self.path)
-			total_frames = cap.get(7)
+			self.LucidVid.init_input_vid(self.path)
+		
+			total_frames = self.LucidVid.nframes
 			self.strtFrmSpin.set_range(0,total_frames-1)
 			self.strtFrmSpin.set_value(0)
 			self.endFrmSpin.set_range(1,total_frames)
 			self.endFrmSpin.set_value(total_frames)
 			
-			fps = cap.get(5)
+			fps = self.LucidVid.fps
 		
 			# It seems that opencv can't read the fps on certain videos and return NaN. In this instance default to 30
 			if math.isnan(fps):
 				fps = self.settings.get_int('fps')
-				self.fpsNotify.set_markup('<span foreground="red" background="white" weight="light">!! Failed to retrieve frame rate from source !!</span>')
-				
-			cap.release()
+				self.mainWin.set_notif(
+					'!! Failed to retrieve frame rate from source !!',
+					fg = 'red',
+					bg = 'white',
+					weight = 'light',
+					targ = self.fpsNotify
+				)
 			
 			self.fpsSpin.set_value(fps)
 			
@@ -156,50 +167,32 @@ class VideoWindow(Gtk.Window):
 		dialog.destroy()
 
 	def add_filters(self, dialog):
-		filter_JPEG = Gtk.FileFilter()
-		filter_JPEG.set_name("Videos")
-		filter_JPEG.add_mime_type("video/mp4")
-		filter_JPEG.add_mime_type("video/x-flv")
-		filter_JPEG.add_mime_type("video/MP2T")
-		filter_JPEG.add_mime_type("video/3gpp")
-		filter_JPEG.add_mime_type("video/quicktime")
-		filter_JPEG.add_mime_type("video/x-msvideo")
-		filter_JPEG.add_mime_type("video/x-ms-wmv")
-		filter_JPEG.add_mime_type("video/ogg")
-		filter_JPEG.add_mime_type("video/webm")
-		filter_JPEG.add_mime_type("application/x-mpegURL")
-		dialog.add_filter(filter_JPEG)
+		filter_vids = Gtk.FileFilter()
+		filter_vids.set_name("Videos")
+		filter_vids.add_mime_type("video/mp4")
+		filter_vids.add_mime_type("video/x-flv")
+		filter_vids.add_mime_type("video/MP2T")
+		filter_vids.add_mime_type("video/3gpp")
+		filter_vids.add_mime_type("video/quicktime")
+		filter_vids.add_mime_type("video/x-msvideo")
+		filter_vids.add_mime_type("video/x-ms-wmv")
+		filter_vids.add_mime_type("video/ogg")
+		filter_vids.add_mime_type("video/webm")
+		filter_vids.add_mime_type("application/x-mpegURL")
+		dialog.add_filter(filter_vids)
 		
 	
 	def dream(self,btn):
 	
 		self.mainWin.wakeBtn.show()
-		 
-		tree_iter = self.mainWin.outpCombo.get_active_iter()
-		if tree_iter != None:
-			model = self.mainWin.outpCombo.get_model()
-			outpType = model[tree_iter][0]
-		
-		
 		self.mainWin.mode = 'video'
 		self.hide()
 		self.mainWin.show()
-		self.cap = cv2.VideoCapture(self.path)
-		cap = self.cap
 		
-		w = int(cap.get(3))
-		h = int(cap.get(4))
-		bytesize = int(cap.get(3)) * int(cap.get(4)) * 3
-		limit = int(self.mainWin.settings.get_int('max-bytes'))
-		(w, h) = self.mainWin.get_shrink_dimensions(w, h, bytesize, limit)
-		cap.set(3, w)
-		cap.set(4, h)
+		outpType = self.mainWin.get_output_mode()
 		
 		if outpType > 1:
-			fourcc = cv2.cv.CV_FOURCC(*'XVID')
-			fps = self.fpsSpin.get_value()
-			fname = self.mainWin.make_new_fname(dirSetting='vid-dir', extension='.avi')
-			out = cv2.VideoWriter(fname,fourcc, fps, (w,h))
+			out = self.LucidVid.init_outp_vid()
 			
 		self.mainWin.loop = 0
 		self.mainWin.enable_buttons(False)
@@ -211,58 +204,49 @@ class VideoWindow(Gtk.Window):
 				if self.mainWin.wakeup:
 					break
 				
-				self.mainWin.set_notif('<span foreground="white" background="blue" weight="heavy">%s</span>'%self.mainWin.string['dreaming'])
+				self.mainWin.set_notif(self.mainWin.string['dreaming'], fg='white', bg='blue', weight='heavy')
 				
 				# Capture frame-by-frame
-				ret, frame = cap.read()
+				frame = self.LucidVid.get_next_frame()
 				
 				if frame is None:
 					break
 				
-				frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-				
-				src = PIL.Image.fromarray(frame)
-				size = w,h
-				src = src.resize(size, PIL.Image.ANTIALIAS)
+				src = self.LucidVid.resize_frame(frame)
 				
 				if self.mainWin.loop>0:
-					overl = PIL.Image.open(self.mainWin.tempImagePath)
+					overl = PIL.Image.open(self.LucidImage.tempImagePath)
 					image = PIL.Image.blend(src, overl, self.continuitySpin.get_value())
 				else:
 					image = src
-				imname = self.mainWin.tempImagePath
 				
+				imname = self.LucidImage.tempImagePath
 				image.save(imname)
-				self.mainWin.display_image(imname)
+				self.LucidImage.display_image(imname)
 					
-				img = self.mainWin.prepare_image()
+				img = self.DD.prepare_image()
 				
-				self.mainWin.deepdream(self.mainWin.net, img)
+				self.DD.deepdream(self.DD.net, img)
 				
 				if outpType == 1 or outpType == 3:
-					self.mainWin.save_image()
+					self.LucidImage.save_image()
 					
 				if outpType > 1:  
-					imgout = self.mainWin.prepare_image()
-					imgout = np.uint8(np.clip(imgout, 0, 255)) 
-					imgout = cv2.cvtColor(imgout, cv2.COLOR_RGB2BGR) 
-					out.write(imgout)
+					self.LucidVid.write_frame(colorSwitch='RGB2BGR')
 			
 			self.mainWin.loop += 1
-		cap.release()
-		if outpType > 1:
-			out.release()
-		cv2.destroyAllWindows()
+		self.LucidVid.close_session()
 		
 		self.mainWin.wakeBtn.hide()
 		self.mainWin.wakeup = False
 		self.mainWin.enable_buttons()
 		self.mainWin.set_info("")
-		self.mainWin.set_notif('<span foreground="blue">%s</span>'%self.mainWin.string['ready'])
+		self.mainWin.set_notif(self.mainWin.string['ready'], fg='blue')
 
 	def on_close(self,a,b):
 		self.destroy()
 		self.mainWin.show()
+		self.LucidVid.close_session()
 
 
 
