@@ -38,7 +38,8 @@ class SequencerWindow(Gtk.Window):
 		self.fJson = self.settings.get_string('proj-dir')+'/.lucid.seq.json'
 		self.sequences = mainWin._Sequencer.get_sequences()
 		self.unsaved = {}
-
+		self.displayMode = 1 
+		
 		self.do_save_bar()
 		self.do_adjustments_bar()
 		self.do_viewscreen()
@@ -54,9 +55,27 @@ class SequencerWindow(Gtk.Window):
 		
 	def do_viewscreen(self):
 		self.vs = Gtk.VBox()
-		label = Gtk.Label("ORDER:")
-		self.vs.add(label)
+		store = Gtk.ListStore(int, str)
+		store.append([1, "Compact"])
+		store.append([2, "Extended"])
+		self.displayType = Gtk.ComboBox.new_with_model(store)
+		renderer_text = Gtk.CellRendererText()
+		self.displayType.pack_start(renderer_text, True)
+		self.displayType.add_attribute(renderer_text, "text", 1)
+		self.displayType.set_active(0)
+		self.displayType.connect("changed", self.switch_display_mode)
+		self.vs.add(self.displayType)
 		self.box.add(self.vs)
+		self.scrollWin = Gtk.ScrolledWindow()
+		self.scrollWin.set_size_request(800,500)
+		self.vs.add(self.scrollWin)
+		
+	def switch_display_mode(self, combo):
+		tree_iter = combo.get_active_iter()
+		if tree_iter != None:
+			model = combo.get_model()
+			self.displayMode = model[tree_iter][0]
+			self.display_adjustments()
 		
 	def do_adjustments_bar(self):
 		self.adjBar = Gtk.VBox()
@@ -265,19 +284,6 @@ class SequencerWindow(Gtk.Window):
 		self.layer_combo.add_attribute(renderer_text, "text", 1)
 		self.layer_combo.set_active(0)
 		return self.layer_combo
-		
-	def on_add_clicked(self, btn):
-		self.unsaved[int(self.loopSpin.get_value())] = {
-			'iters':self.iterSpin.get_value(),
-			'octaves':self.octaveSpin.get_value(),
-			'scale':self.scaleSpin.get_value(),
-			'zoom':self.zoomSpin.get_value(),
-			'deg':round(self.degSpin.get_value(),3),
-			'zoom-trans':self.get_trans(self.zoomTrans),
-			'deg-trans':self.get_trans(self.degTrans),
-			'layer':self.get_trans(self.layer_combo)
-			}
-		self.display_adjustments()
 	
 	def get_trans(self, obj):
 		tree_iter = obj.get_active_iter()
@@ -298,7 +304,7 @@ class SequencerWindow(Gtk.Window):
 			'layer':None
 			}
 		S = self.unsaved
-		for w in self.vs.get_children():
+		for w in self.scrollWin.get_children():
 			w.destroy()
 		
 		sortedKeys = sorted(S.iterkeys())
@@ -307,9 +313,7 @@ class SequencerWindow(Gtk.Window):
 			tableRowN = 100
 		self.grid = Gtk.Table(tableRowN,11, False)
 		
-		self.scrollWin = Gtk.ScrolledWindow()
-		self.scrollWin.add(self.grid)
-		self.scrollWin.set_size_request(800,500)	
+		self.scrollWin.add(self.grid)	
 
 		self.grid.attach(Gtk.Label('@ Frame'),0,1,0,1)
 		self.grid.attach(Gtk.Label('Iterations:'),1,2,0,1)
@@ -320,63 +324,90 @@ class SequencerWindow(Gtk.Window):
 		self.grid.attach(Gtk.Label('Rotation'),6,7,0,1)
 		self.grid.attach(Gtk.Label('Transition'),7,8,0,1)
 		self.grid.attach(Gtk.Label('Layer'),8,9,0,1)
-		self.grid.set_col_spacings(10)
-		self.grid.set_row_spacings(10)
+		self.grid.set_col_spacings(5)
+		self.grid.set_row_spacings(5)
 		i = 1
 		zoom_transitions = {}
 		active_zoom_transition = False
 		deg_transitions = {}
 		active_deg_transition = False
-		for key in sorted(S.iterkeys()):
+				
+		for key in sortedKeys:
 			
+			if self.displayMode == 1:
+				incr = i
+			else:
+				incr = int(key)
+		
 			btn = Gtk.Button(str(int(key)))
-			self.grid.attach(btn,0,1,int(key), int(key)+1)
+			self.grid.attach(btn,0,1,incr, incr+1)
 			btn.rowid = key	
 			btn.connect("clicked", self.focus_row_from_btn)
 			
 			if 'iters' in S[key] and S[key]['iters'] != lastEntry['iters']:
-				label = Gtk.Label(str(S[key]['iters']))
-				self.grid.attach(label,1,2,int(key), int(key)+1)
+				label = Gtk.Label()
+				label.set_markup('<span foreground="blue" weight="heavy">'+str(S[key]['iters'])+'</span>')
 				lastEntry['iters'] = S[key]['iters']
+			else:
+				label = Gtk.Label()
+				label.set_markup('<span foreground="grey" weight="light">'+str(lastEntry['iters'])+'</span>')
+			self.grid.attach(label,1,2,incr, incr+1)
 			
 			if  'octaves' in S[key] and S[key]['octaves'] != lastEntry['octaves']:
-				label = Gtk.Label(str(S[key]['octaves']))
-				self.grid.attach(label,2,3,int(key), int(key)+1)
+				label = Gtk.Label()
+				label.set_markup('<span foreground="blue" weight="heavy">'+str(S[key]['octaves'])+'</span>')
 				lastEntry['octaves'] = S[key]['octaves']
+			else:
+				label = Gtk.Label()
+				label.set_markup('<span foreground="grey" weight="light">'+str(lastEntry['octaves'])+'</span>')
+			self.grid.attach(label,2,3,incr, incr+1)
 			
 			if  'scale' in S[key] and S[key]['scale'] != lastEntry['scale']:
-				label = Gtk.Label(str(S[key]['scale']))
-				self.grid.attach(label,3,4,int(key), int(key)+1)
+				label = Gtk.Label()
+				label.set_markup('<span foreground="blue" weight="heavy">'+str(S[key]['scale'])+'</span>')
 				lastEntry['scale'] = S[key]['scale']
+			else:
+				label = Gtk.Label()
+				label.set_markup('<span foreground="grey" weight="light">'+str(lastEntry['scale'])+'</span>')
+			self.grid.attach(label,3,4,incr, incr+1)
 			
 			if  'zoom' in S[key] and S[key]['zoom'] != lastEntry['zoom']:
-				label = Gtk.Label(str(S[key]['zoom']))
-				self.grid.attach(label,4,5,int(key), int(key)+1)
+				label = Gtk.Label()
+				label.set_markup('<span foreground="green" weight="heavy">'+str(round(S[key]['zoom'],3))+'</span>')
 				lastEntry['zoom'] = S[key]['zoom']
 				if active_zoom_transition != False:
 					zoom_transitions[active_zoom_transition]['breaks'].append(int(key))
+			elif int(lastEntry['zoom-trans'])>0:
+				label = Gtk.Label()
+				label.set_markup('<span foreground="green">|</span>')
+			self.grid.attach(label,4,5,incr, incr+1)
 			
 			if  'zoom-trans' in S[key] and S[key]['zoom-trans'] != lastEntry['zoom-trans']:
 				label = Gtk.Label()
-				label.set_markup('<span background="#ffffff">'+str(S[key]['zoom-trans'])+'</span>')
-				self.grid.attach(label,5,6,int(key), int(key)+1)
+				label.set_markup('<span foreground="green" weight="heavy">'+str(S[key]['zoom-trans'])+'</span>')
 				lastEntry['zoom-trans'] = S[key]['zoom-trans']
 				if S[key]['zoom-trans'] == 0:
 					active_zoom_transition = False
 				else:
 					zoom_transitions[key] = {'type':S[key]['zoom-trans'],'breaks':[]}
 					active_zoom_transition = key
+			self.grid.attach(label,5,6,incr, incr+1)
 			
 			if  'deg' in S[key] and S[key]['deg'] != lastEntry['deg']:
-				label = Gtk.Label(str(round(S[key]['deg'],3)))
-				self.grid.attach(label,6,7,int(key), int(key)+1)
+				label = Gtk.Label()
+				label.set_markup('<span foreground="purple" weight="heavy">'+str(round(S[key]['deg'],3))+'</span>')
 				lastEntry['deg'] = S[key]['deg']
 				if active_deg_transition != False:
 					deg_transitions[active_deg_transition]['breaks'].append(int(key))
+			elif int(lastEntry['deg-trans'])>0:
+				label = Gtk.Label()
+				label.set_markup('<span foreground="purple">|</span>')
+			self.grid.attach(label,6,7,incr, incr+1)
 					
 			if  'deg-trans' in S[key] and S[key]['deg-trans'] != lastEntry['deg-trans']:
-				label = Gtk.Label(str(S[key]['deg-trans']))
-				self.grid.attach(label,7,8,int(key), int(key)+1)
+				label = Gtk.Label()
+				label.set_markup('<span foreground="purple" weight="heavy">'+str(S[key]['deg-trans'])+'</span>')
+				self.grid.attach(label,7,8,incr, incr+1)
 				lastEntry['deg-trans'] = S[key]['deg-trans']
 				if S[key]['deg-trans'] == 0:
 					active_deg_transition = False
@@ -385,19 +416,24 @@ class SequencerWindow(Gtk.Window):
 					active_deg_transition = key
 			
 			if  'layer' in S[key] and S[key]['layer'] != lastEntry['layer']:
-				label = Gtk.Label(S[key]['layer'])
-				self.grid.attach(label,8,9,int(key), int(key)+1)
+				label = Gtk.Label()
+				label.set_markup('<span foreground="blue" weight="heavy">'+str(S[key]['layer'])+'</span>')
 				lastEntry['layer'] = S[key]['layer']
+			else:
+				label = Gtk.Label()
+				label.set_markup('<span foreground="grey" weight="light">'+str(lastEntry['layer'])+'</span>')
+			self.grid.attach(label,8,9,incr, incr+1)
+			
 			if i>1:
 				btn = Gtk.Button('x')
-				self.grid.attach(btn,9,10,int(key), int(key)+1)	
+				self.grid.attach(btn,9,10,incr, incr+1)	
 				btn.rowid = key	
 				btn.connect("clicked", self.delete_row)
-			else:
-				i+=1
+			i+=1
+			
 		self.display_transitions(zoom_transitions,'zoom')	
 		self.display_transitions(deg_transitions,'deg')	
-		self.vs.add(self.scrollWin)
+		
 		self.vs.show_all()
 		self.vs.set_child_packing(self.grid,False,False,5,0)
 			
@@ -413,15 +449,23 @@ class SequencerWindow(Gtk.Window):
 		trans_end = self.unsaved[end][typ]
 		trans_dif = trans_end - trans_start
 		span = end - start
+		sortedKeys = sorted(self.unsaved.iterkeys())
+		n = sortedKeys.index(start)+2
 		for i in xrange(start+1, end):
-			pos = i-start
-			zoom = trans_start + (pos*(trans_dif/span))
-			label = Gtk.Label()
-			label.set_markup('<span weight="light" foreground="#999999">'+str(round(zoom,3))+'</span>')
-			if typ == 'zoom':
-				self.grid.attach(label,5,6,i,i+1)	
-			elif typ == 'deg':
-				self.grid.attach(label,7,8,i,i+1)	
+			if self.displayMode == 2:
+				incr = i
+			elif self.displayMode == 1:
+				incr = n
+			if (self.displayMode == 2) or (i in sortedKeys):
+				pos = i-start
+				zoom = trans_start + (pos*(trans_dif/span))
+				label = Gtk.Label()
+				label.set_markup('<span weight="light" foreground="#999999">'+str(round(zoom,3))+'</span>')
+				if typ == 'zoom':
+					self.grid.attach(label,5,6,incr,incr+1)	
+				elif typ == 'deg':
+					self.grid.attach(label,7,8,incr,incr+1)	
+				n += 1
 				
 	
 	def delete_row(self,btn):
