@@ -37,7 +37,6 @@ import math
 
 from lucidgtk.DeepDream import DeepDream
 from lucidgtk.SettingsWindow import SettingsWindow
-from lucidgtk.VideoWindow import VideoWindow
 from lucidgtk.SequencerWindow import Sequencer, SequencerWindow
 from lucidgtk.Media import LucidImage, LucidVid
 from lucidgtk.GlobalMenu import GlobalMenu
@@ -180,7 +179,12 @@ class DreamWindow(Gtk.Window):
 		self.fBtn.set_sensitive(v)
 		self.dreamBtn.set_sensitive(v)
 		self.inpCombo.set_sensitive(v)
-		self.outpCombo.set_sensitive(v)	
+		self.outpCombo.set_sensitive(v)
+		self.loopSpin.set_sensitive(v)	
+		self.fpsSpin.set_sensitive(v)	
+		self.strtFrmSpin.set_sensitive(v)
+		self.seqCombo.set_sensitive(v)	
+		self.imageName.set_sensitive(v)	
 	
 
 	def get_selected_layer(self):
@@ -544,7 +548,7 @@ class DreamWindow(Gtk.Window):
 		self.bottBar.add(label)
 		
 		self.imageName = Gtk.Entry()
-		self.imageName.set_text("myImageName")
+		self.imageName.set_text("my-image-name")
 		self.bottBar.pack_start(self.imageName, True, True, 0)
 		
 		outp_store = Gtk.ListStore(int, str)
