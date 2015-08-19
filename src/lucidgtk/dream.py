@@ -31,7 +31,6 @@ from os.path import basename
 
 from gi.repository.GdkPixbuf import Pixbuf
 
-import json
 import cv2
 import math
 
@@ -253,7 +252,7 @@ class DreamWindow(Gtk.Window):
 		self.fpsSpin.set_adjustment(adjustment)
 		self.fpsSpin.set_value(self.settings.get_int('fps'))
 		self.fpsSpin.set_numeric(1)
-		self.fpsSpin.connect("changed", self.updFPS)
+		self.fpsSpin.connect("value-changed", self.updFPS)
 		self.adjBar.pack_start(self.fpsSpin, False, False, 0)
 		
 		self.strtFrmSpinLabel = Gtk.Label("Start @:")
@@ -263,7 +262,7 @@ class DreamWindow(Gtk.Window):
 		self.strtFrmSpin.set_adjustment(adjustment)
 		self.strtFrmSpin.set_value(0)
 		self.strtFrmSpin.set_numeric(1)
-		self.strtFrmSpin.connect("changed", self.updEndFrmSpin)
+		self.strtFrmSpin.connect("value-changed", self.updEndFrmSpin)
 		self.adjBar.pack_start(self.strtFrmSpin, False, False, 0)
 		
 		self.endFrmSpinLabel = Gtk.Label("End @:")
@@ -273,7 +272,7 @@ class DreamWindow(Gtk.Window):
 		self.endFrmSpin.set_adjustment(adjustment)
 		self.endFrmSpin.set_value(0)
 		self.endFrmSpin.set_numeric(1)
-		self.endFrmSpin.connect("changed", self.updStrtFrmSpin)
+		self.endFrmSpin.connect("value-changed", self.updStrtFrmSpin)
 		self.adjBar.pack_start(self.endFrmSpin, False, False, 0)
 		
 		self.continuitySpinLabel = Gtk.Label("Continuity:")
@@ -291,15 +290,26 @@ class DreamWindow(Gtk.Window):
 	
 	def updEndFrmSpin(self, spin):
 		strt = spin.get_value()
+		if self.LucidVid.vid_loaded and self.firstVidFrameLoaded:
+			self.display_selected_frame(strt)
 		s,e = self.endFrmSpin.get_range()
 		if s!=strt+1:
 			self.endFrmSpin.set_range(strt+1,e)
 		
 	def updStrtFrmSpin(self, spin):
 		end = spin.get_value()
+		if self.LucidVid.vid_loaded and self.firstVidFrameLoaded:
+			self.display_selected_frame(end)
 		s,e = self.strtFrmSpin.get_range()
 		if e != end-1:
 			self.strtFrmSpin.set_range(s,end-1)
+			
+	def display_selected_frame(self, i):
+		frame = self.LucidVid.get_frame_by_index(i)
+		imname = self.LucidImage.tempImagePath
+		image = self.LucidVid.resize_frame(frame)
+		image.save(imname)
+		self.LucidImage.display_image(imname)
 	
 	def do_adjustments_bar(self):
 		self.adjBar = Gtk.Box()
@@ -420,6 +430,7 @@ class DreamWindow(Gtk.Window):
 	
 	def on_inp_combo_changed(self, combo):
 		tree_iter = combo.get_active_iter()
+		self.populate_recent_store()
 		if tree_iter != None:
 			model = combo.get_model()
 			v = model[tree_iter][0]
@@ -475,8 +486,19 @@ class DreamWindow(Gtk.Window):
 		self.inpCombo.set_active(0)
 		self.topBar.pack_start(self.inpCombo, False, False, True)
 		
+		self.recent_store = Gtk.ListStore(str, str)
+		self.recentCombo = Gtk.ComboBox.new_with_model(self.recent_store)
+		renderer_text = Gtk.CellRendererText()
+		self.recentCombo.pack_start(renderer_text, True)
+		self.recentCombo.add_attribute(renderer_text, "text", 1)
+		self.populate_recent_store()
+		self.topBar.pack_start(self.recentCombo, False, False, True)
+		self.recentCombo.connect("changed", self.load_media_from_recent)
 		
-		self.fBtn = Gtk.Button("Select")
+		icon_theme = Gtk.IconTheme.get_default()
+		f = icon_theme.lookup_icon("document-open", 24, 0).get_filename()
+		image = Gtk.Image.new_from_file(f)
+		self.fBtn = Gtk.Button(None, image=image)
 		self.fBtn.connect("clicked", self.on_fBtn_clicked)
 		self.topBar.pack_start(self.fBtn, False, False, 0)
 		
@@ -507,7 +529,35 @@ class DreamWindow(Gtk.Window):
 		
 		self.grid.attach(self.topBar,1,1,2,1)
 	
-	  
+	def populate_recent_store(self):
+		self.recent_store.clear()
+		self.recent_store.append(['', '---'])
+		if self.get_input_mode() == 1:
+			a = self.LucidImage.recent
+		else:
+			a = self.LucidVid.recent
+		for f in a:
+			fname = basename(f)
+			self.recent_store.append([f, fname])
+		if len(a)>0:
+			self.recentCombo.set_active(1)
+		else:
+			self.recentCombo.set_active(0)
+	
+	def load_media_from_recent(self, combo):
+		tree_iter = combo.get_active_iter()
+		if tree_iter != None:
+			model = combo.get_model()
+			f = model[tree_iter][0] 
+			fname = model[tree_iter][1] 
+			if len(f)>3:
+				if self.get_input_mode() == 1:
+					self.LucidImage.display_image(f)
+					nm = os.path.splitext(fname)[0]
+					self.imageName.set_text(nm)
+					self.settings.set_string('im-name', nm)
+				else:
+					self.load_video(f)
 	
 	def on_wake_clicked(self, btn):
 		self.set_status(self.string['waking'], fg='black', bg='orange', weight='heavy')
@@ -695,6 +745,8 @@ class DreamWindow(Gtk.Window):
 		
 			pname = dialog.get_filename()
 			self.LucidImage.display_image(pname)
+			self.LucidImage.add_recent(pname)
+			self.populate_recent_store()
 			fname = basename(pname)
 			nm = os.path.splitext(fname)[0]
 			self.imageName.set_text(nm)
@@ -711,28 +763,34 @@ class DreamWindow(Gtk.Window):
 		if response == Gtk.ResponseType.OK:
 			
 			self.path = dialog.get_filename()
-			fname = basename(self.path)
-			nm = os.path.splitext(fname)[0]
-			self.imageName.set_text(nm)
+			self.load_video(self.path)
+			self.LucidVid.add_recent(self.path)
+			self.populate_recent_store()
 			
-			self.LucidVid.init_input_vid(self.path)
-		
-			total_frames = self.LucidVid.nframes
-			self.strtFrmSpin.set_range(0,total_frames-1)
-			self.strtFrmSpin.set_value(0)
-			self.endFrmSpin.set_range(1,total_frames)
-			self.endFrmSpin.set_value(total_frames)
-			
-			fps = self.LucidVid.fps
-		
-			# It seems that opencv can't read the fps on certain videos and returns NaN. In this instance set to default
-			if math.isnan(fps):
-				fps = self.settings.get_int('fps')
-				self.notify('!! Failed to retrieve frame rate from source, deferred to default !!', color='red')
-			self.dreamBtn.show()
-			self.fpsSpin.set_value(fps)
 		dialog.destroy()
 		
+	def load_video(self, path):
+		fname = basename(path)
+		nm = os.path.splitext(fname)[0]
+		self.imageName.set_text(nm)
+		
+		self.LucidVid.init_input_vid(path)
+		
+		fps = self.LucidVid.fps
+	
+		# It seems that opencv can't read the fps on certain videos and returns NaN. In this instance set to default
+		if math.isnan(fps):
+			fps = self.settings.get_int('fps')
+			self.notify('!! Failed to retrieve frame rate from source, deferred to default !!', color='red')
+		self.dreamBtn.show()
+		self.fpsSpin.set_value(fps)
+		total_frames = self.LucidVid.nframes
+		self.firstVidFrameLoaded = False
+		self.endFrmSpin.set_range(1,total_frames)
+		self.endFrmSpin.set_value(total_frames)
+		self.strtFrmSpin.set_range(0,total_frames-1)
+		self.strtFrmSpin.set_value(0)
+		self.firstVidFrameLoaded = True
 		
 	def video_dream(self):
 		if self.is_outp_set() == False:

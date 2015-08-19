@@ -24,6 +24,8 @@ from gi.repository.GdkPixbuf import Pixbuf
 
 import cv2
 import numpy as np
+import json
+import time
 
 class LucidImage():
 	
@@ -31,6 +33,9 @@ class LucidImage():
 		self.mainWin = mainWin
 		self.settings = mainWin.settings
 		self.tempImagePath = self.get_temp_im_path()
+		projdir = self.settings.get_string('proj-dir')
+		self.recentJSON = projdir+'/.lucidgtk.recent.images.json'
+		self.recent = self.load_recent()
 	
 	def zoom_and_rotate(self, img):
 		r = self.settings.get_double('rot-deg')
@@ -42,6 +47,27 @@ class LucidImage():
 			h,w = img.shape[:2]
 			img = nd.affine_transform(img, [1-z,1-z,1], [h*z/2,w*z/2,0], order=1)
 		return img
+	
+	def load_recent(self):
+		if os.path.isfile(self.recentJSON) == False:
+			return []
+		d = open(self.recentJSON,'r').read()
+		return json.loads(d)
+		
+	def add_recent(self, path):
+		if path in self.recent:
+			self.recent.remove(path)
+		self.recent.insert(0, path)
+		if len(self.recent) > 10:
+			del self.recent[-1]
+		self.save_recent()
+		self.load_recent()
+		
+	def save_recent(self):
+		target = open(self.recentJSON, 'w')
+		target.truncate()
+		target.write(json.dumps(self.recent))
+		target.close()
 	
 	def get_lucid_icon(self, size):
 		icon_theme = Gtk.IconTheme.get_default()
@@ -123,7 +149,31 @@ class LucidVid():
 		self.DD = mainWin.DD
 		self.LucidImage = mainWin.LucidImage
 		self.set_defaults()
+		projdir = self.settings.get_string('proj-dir')
+		self.recentJSON = projdir+'/.lucidgtk.recent.vids.json'
+		self.recent = self.load_recent()
+	
+	def load_recent(self):
+		if os.path.isfile(self.recentJSON) == False:
+			return []
+		d = open(self.recentJSON,'r').read()
+		return json.loads(d)
 		
+	def add_recent(self, path):
+		if path in self.recent:
+			self.recent.remove(path)
+		self.recent.insert(0, path)
+		if len(self.recent) > 10:
+			del self.recent[-1]
+		self.save_recent()
+		self.load_recent()
+		
+	def save_recent(self):
+		target = open(self.recentJSON, 'w')
+		target.truncate()
+		target.write(json.dumps(self.recent))
+		target.close()
+	
 	def set_defaults(self):
 		self.cap = None
 		self.outvid = None
@@ -132,6 +182,12 @@ class LucidVid():
 		self.fps = None
 		self.nframes = None
 		self.first_frame = None
+		self.vid_loaded = False
+		
+	def get_frame_by_index(self, i):
+		self.cap.set(1,i)
+		ret, frame = self.cap.read()
+		return self.BGR2RGB(frame)
 		
 	def write_frame(self, colorSwitch='BGR2RGB'):
 		imgout = self.DD.prepare_image()
@@ -162,6 +218,7 @@ class LucidVid():
 		imname = self.LucidImage.tempImagePath
 		frame.save(imname)
 		self.LucidImage.display_image(imname)
+		self.vid_loaded = True
 		return cap
 
 	def init_outp_vid(self):

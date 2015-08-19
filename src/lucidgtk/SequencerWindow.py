@@ -94,7 +94,7 @@ class SequencerWindow(Gtk.Window):
 		self.loopSpin.set_numeric(1)
 		self.loopSpin.set_increments(24,99)
 		box.add(self.loopSpin)
-		self.loopSpin.connect("changed", self.focus_row_from_spin)
+		self.loopSpin.connect("value-changed", self.focus_row_from_spin)
 		self.adjBar.pack_start(box, False, False, 0)
 
 		box = Gtk.Box(homogeneous = True)
