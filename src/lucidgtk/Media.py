@@ -25,7 +25,7 @@ from gi.repository.GdkPixbuf import Pixbuf
 import cv2
 import numpy as np
 import json
-import time
+import math
 
 class LucidImage():
 	
@@ -222,7 +222,7 @@ class LucidVid():
 		return cap
 
 	def init_outp_vid(self):
-		if self.fps == None:
+		if self.fps==None or math.isnan(self.fps):
 			self.fps = self.settings.get_int('fps')
 		fourcc = cv2.cv.CV_FOURCC(*'XVID')
 		fname = self.LucidImage.make_new_fname(dirSetting='vid-dir', extension='.avi')
