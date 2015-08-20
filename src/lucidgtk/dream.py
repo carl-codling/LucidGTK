@@ -33,6 +33,8 @@ from gi.repository.GdkPixbuf import Pixbuf
 
 import cv2
 import math
+import threading
+import time
 
 from lucidgtk.DeepDream import DeepDream
 from lucidgtk.SettingsWindow import SettingsWindow
@@ -98,7 +100,6 @@ class DreamWindow(Gtk.Window):
 		self.do_notifications_bar()
 		self.show_all()
 		self.on_inp_combo_changed(self.inpCombo)
-		self.closeNotifierBtn.hide()
 		self.wakeBtn.hide()
 		loading.destroy()
 
@@ -106,18 +107,19 @@ class DreamWindow(Gtk.Window):
 		self.notifierBar = Gtk.Box()
 		self.notifier = Gtk.Label('')
 		self.notifierBar.add(self.notifier)
-		self.closeNotifierBtn = Gtk.Button('OK')
-		self.notifierBar.add(self.closeNotifierBtn)
-		self.closeNotifierBtn.connect("clicked", self.close_notifier)
 		self.grid.attach_next_to(self.notifierBar, self.topBar, Gtk.PositionType.TOP, 1, 3)
-	
-	def close_notifier(self, btn):
-		btn.hide()
-		self.notifier.set_text('')
 		
 	def notify(self, msg, color='green'):
-		self.closeNotifierBtn.show()
 		self.notifier.set_markup('<span foreground="'+color+'">'+msg+'</span>')
+		self.notifyDelTime = time.time()
+		t = threading.Thread(target=self.timed_notify_delete)
+		t.start()
+		
+	def timed_notify_delete(self):
+		ntime = self.notifyDelTime
+		time.sleep(10)
+		if ntime == self.notifyDelTime:
+			self.notifier.set_text('')
 	
 	def sequencer_win(self,b):
 		if self.sequencerWin:
@@ -184,6 +186,7 @@ class DreamWindow(Gtk.Window):
 		self.strtFrmSpin.set_sensitive(v)
 		self.seqCombo.set_sensitive(v)	
 		self.imageName.set_sensitive(v)	
+		self.recentCombo.set_sensitive(v)
 	
 
 	def get_selected_layer(self):
@@ -430,7 +433,6 @@ class DreamWindow(Gtk.Window):
 	
 	def on_inp_combo_changed(self, combo):
 		tree_iter = combo.get_active_iter()
-		self.populate_recent_store()
 		if tree_iter != None:
 			model = combo.get_model()
 			v = model[tree_iter][0]
@@ -469,6 +471,7 @@ class DreamWindow(Gtk.Window):
 				self.continuitySpin.show()
 				self.strtFrmSpin.show()
 				self.endFrmSpin.show()
+		self.populate_recent_store()
 				
 	
 	def do_top_bar(self):
@@ -781,14 +784,14 @@ class DreamWindow(Gtk.Window):
 		# It seems that opencv can't read the fps on certain videos and returns NaN. In this instance set to default
 		if math.isnan(fps):
 			fps = self.settings.get_int('fps')
-			self.notify('!! Failed to retrieve frame rate from source, deferred to default !!', color='red')
+			self.notify('!! Failed to retrieve frame rate from <span weight="heavy">'+fname+'</span>, using default  instead!!', color='red')
 		self.dreamBtn.show()
 		self.fpsSpin.set_value(fps)
 		total_frames = self.LucidVid.nframes
 		self.firstVidFrameLoaded = False
-		self.endFrmSpin.set_range(1,total_frames)
-		self.endFrmSpin.set_value(total_frames)
-		self.strtFrmSpin.set_range(0,total_frames-1)
+		self.endFrmSpin.set_range(1,total_frames-1)
+		self.endFrmSpin.set_value(total_frames-1)
+		self.strtFrmSpin.set_range(0,total_frames-2)
 		self.strtFrmSpin.set_value(0)
 		self.firstVidFrameLoaded = True
 		
