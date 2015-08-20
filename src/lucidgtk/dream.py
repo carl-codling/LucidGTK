@@ -58,14 +58,32 @@ class DreamWindow(Gtk.Window):
 		self.set_border_width(10)
 		self.grid = Gtk.Grid()
 		self.add(self.grid)
+		
+		if self.proj_folder_set() is False:
+			self.do_config_error('Please set the locations for project files to be stored')
+			return
+			
+			
+		self.DD = DeepDream()
+		
+		self.LucidImage = LucidImage(self)
+		self.LucidVid = LucidVid(self)
+		
+
+		if self.DD.initcaffe(self) is False:
+			self.do_config_error('Caffe could not start. Please review the model and deploy file settings')
+			return
+
+
+		if self.media_folders_set() is False:
+			self.do_config_error('Please set the locations for deepdream images and videos to be stored')
+			return
+
 
 		self.wakeup = False 
 		self.fps = False # if not set then output videos default to settings obj. value
 		self.settingsErr = None
 
-		self.DD = DeepDream()
-		self.LucidImage = LucidImage(self)
-		self.LucidVid = LucidVid(self)
 		
 		self.vidWin = False
 		self.settingsWin = False
@@ -74,18 +92,7 @@ class DreamWindow(Gtk.Window):
 		GlobalMenu(self)
 		loading = self.loading()
 		
-		if self.DD.initcaffe(self) is False:
-			self.do_config_error('Caffe could not start. Please review the model and deploy file settings')
-			return
-
-		if self.proj_folder_set() is False:
-			self.do_config_error('Please set the locations for project files to be stored')
-			return
-
-		if self.media_folders_set() is False:
-			self.do_config_error('Please set the locations for deepdream images and videos to be stored')
-			return
-
+		
 		self._Sequencer = Sequencer(self)
 		self.sequences = self._Sequencer.get_sequences()		   
 		self.sequence = None		   
@@ -255,7 +262,7 @@ class DreamWindow(Gtk.Window):
 		self.fpsSpin.set_adjustment(adjustment)
 		self.fpsSpin.set_value(self.settings.get_int('fps'))
 		self.fpsSpin.set_numeric(1)
-		self.fpsSpin.connect("value-changed", self.updFPS)
+		self.fpsSpin.connect("value-changed", self.upd_fps_from_spin)
 		self.adjBar.pack_start(self.fpsSpin, False, False, 0)
 		
 		self.strtFrmSpinLabel = Gtk.Label("Start @:")
@@ -265,7 +272,7 @@ class DreamWindow(Gtk.Window):
 		self.strtFrmSpin.set_adjustment(adjustment)
 		self.strtFrmSpin.set_value(0)
 		self.strtFrmSpin.set_numeric(1)
-		self.strtFrmSpin.connect("value-changed", self.updEndFrmSpin)
+		self.strtFrmSpin.connect("value-changed", self.upd_end_from_spin)
 		self.adjBar.pack_start(self.strtFrmSpin, False, False, 0)
 		
 		self.endFrmSpinLabel = Gtk.Label("End @:")
@@ -275,7 +282,7 @@ class DreamWindow(Gtk.Window):
 		self.endFrmSpin.set_adjustment(adjustment)
 		self.endFrmSpin.set_value(0)
 		self.endFrmSpin.set_numeric(1)
-		self.endFrmSpin.connect("value-changed", self.updStrtFrmSpin)
+		self.endFrmSpin.connect("value-changed", self.upd_strt_from_spin)
 		self.adjBar.pack_start(self.endFrmSpin, False, False, 0)
 		
 		self.continuitySpinLabel = Gtk.Label("Continuity:")
@@ -288,10 +295,10 @@ class DreamWindow(Gtk.Window):
 		self.continuitySpin.set_numeric(1)
 		self.adjBar.pack_start(self.continuitySpin, False, False, 0)
 
-	def updFPS(self, spin):
+	def upd_fps_from_spin(self, spin):
 		self.LucidVid.fps = spin.get_value()
 	
-	def updEndFrmSpin(self, spin):
+	def upd_end_from_spin(self, spin):
 		strt = spin.get_value()
 		if self.LucidVid.vid_loaded and self.firstVidFrameLoaded:
 			self.display_selected_frame(strt)
@@ -299,7 +306,7 @@ class DreamWindow(Gtk.Window):
 		if s!=strt+1:
 			self.endFrmSpin.set_range(strt+1,e)
 		
-	def updStrtFrmSpin(self, spin):
+	def upd_strt_from_spin(self, spin):
 		end = spin.get_value()
 		if self.LucidVid.vid_loaded and self.firstVidFrameLoaded:
 			self.display_selected_frame(end)
@@ -502,7 +509,7 @@ class DreamWindow(Gtk.Window):
 		f = icon_theme.lookup_icon("document-open", 24, 0).get_filename()
 		image = Gtk.Image.new_from_file(f)
 		self.fBtn = Gtk.Button(None, image=image)
-		self.fBtn.connect("clicked", self.on_fBtn_clicked)
+		self.fBtn.connect("clicked", self.on_open_file_clicked)
 		self.topBar.pack_start(self.fBtn, False, False, 0)
 		
 		self.wakeBtn = Gtk.Button('WAKE UP!')
@@ -720,10 +727,10 @@ class DreamWindow(Gtk.Window):
 		dialog.run()
 		dialog.destroy()
 	
-	def on_fBtn_clicked(self, btn):
+	def on_open_file_clicked(self, btn):
 		t = self.get_input_mode()
 		if t is 1:
-			self.on_fselect_clicked()
+			self.select_image()
 		elif t is 2:
 			self.select_video()
 			
@@ -740,7 +747,7 @@ class DreamWindow(Gtk.Window):
 			return model[tree_iter][0]
 		
 	
-	def on_fselect_clicked(self):
+	def select_image(self):
 		dialog = ImageChooser(self)
 		
 		response = dialog.run()
