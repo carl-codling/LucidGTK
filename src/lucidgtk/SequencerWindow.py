@@ -34,17 +34,21 @@ class SequencerWindow(Gtk.Window):
 		self.vbox = Gtk.VBox()
 		self.box = Gtk.Box()
 		
+		self.notifier = Gtk.Label()
+		self.vbox.add(self.notifier)
+		
 		self.add(self.vbox)
 		self.fJson = self.settings.get_string('proj-dir')+'/.lucid.seq.json'
 		self.sequences = mainWin._Sequencer.get_sequences()
 		self.unsaved = {}
 		self.displayMode = 1 
 		
-		self.do_save_bar()
 		self.do_adjustments_bar()
+		self.set_default_first_row()
 		self.do_viewscreen()
 		self.vbox.add(self.box)
 		self.display_adjustments()
+		self.do_save_bar()
 		
 		self.show_all()
 		
@@ -220,7 +224,6 @@ class SequencerWindow(Gtk.Window):
 		btn.connect("clicked", self.insert_layer)
 		box.add(btn)
 		self.adjBar.pack_start(box, False, False, 0)
-		self.set_default_first_row()
 		self.box.add(self.adjBar)
 	
 	def set_default_first_row(self):
@@ -346,20 +349,20 @@ class SequencerWindow(Gtk.Window):
 			
 			if 'iters' in S[key] and S[key]['iters'] != lastEntry['iters']:
 				label = Gtk.Label()
-				label.set_markup('<span foreground="blue" weight="heavy">'+str(S[key]['iters'])+'</span>')
+				label.set_markup('<span foreground="blue" weight="heavy">'+str(int(S[key]['iters']))+'</span>')
 				lastEntry['iters'] = S[key]['iters']
 			else:
 				label = Gtk.Label()
-				label.set_markup('<span foreground="grey" weight="light">'+str(lastEntry['iters'])+'</span>')
+				label.set_markup('<span foreground="grey" weight="light">'+str(int(lastEntry['iters']))+'</span>')
 			self.grid.attach(label,1,2,incr, incr+1)
 			
 			if  'octaves' in S[key] and S[key]['octaves'] != lastEntry['octaves']:
 				label = Gtk.Label()
-				label.set_markup('<span foreground="blue" weight="heavy">'+str(S[key]['octaves'])+'</span>')
+				label.set_markup('<span foreground="blue" weight="heavy">'+str(int(S[key]['octaves']))+'</span>')
 				lastEntry['octaves'] = S[key]['octaves']
 			else:
 				label = Gtk.Label()
-				label.set_markup('<span foreground="grey" weight="light">'+str(lastEntry['octaves'])+'</span>')
+				label.set_markup('<span foreground="grey" weight="light">'+str(int(lastEntry['octaves']))+'</span>')
 			self.grid.attach(label,2,3,incr, incr+1)
 			
 			if  'scale' in S[key] and S[key]['scale'] != lastEntry['scale']:
@@ -377,10 +380,11 @@ class SequencerWindow(Gtk.Window):
 				lastEntry['zoom'] = S[key]['zoom']
 				if active_zoom_transition != False:
 					zoom_transitions[active_zoom_transition]['breaks'].append(int(key))
+				self.grid.attach(label,4,5,incr, incr+1)
 			elif int(lastEntry['zoom-trans'])>0:
 				label = Gtk.Label()
 				label.set_markup('<span foreground="green">|</span>')
-			self.grid.attach(label,4,5,incr, incr+1)
+				self.grid.attach(label,4,5,incr, incr+1)
 			
 			if  'zoom-trans' in S[key] and S[key]['zoom-trans'] != lastEntry['zoom-trans']:
 				label = Gtk.Label()
@@ -391,7 +395,7 @@ class SequencerWindow(Gtk.Window):
 				else:
 					zoom_transitions[key] = {'type':S[key]['zoom-trans'],'breaks':[]}
 					active_zoom_transition = key
-			self.grid.attach(label,5,6,incr, incr+1)
+				self.grid.attach(label,5,6,incr, incr+1)
 			
 			if  'deg' in S[key] and S[key]['deg'] != lastEntry['deg']:
 				label = Gtk.Label()
@@ -399,10 +403,11 @@ class SequencerWindow(Gtk.Window):
 				lastEntry['deg'] = S[key]['deg']
 				if active_deg_transition != False:
 					deg_transitions[active_deg_transition]['breaks'].append(int(key))
+				self.grid.attach(label,6,7,incr, incr+1)
 			elif int(lastEntry['deg-trans'])>0:
 				label = Gtk.Label()
 				label.set_markup('<span foreground="purple">|</span>')
-			self.grid.attach(label,6,7,incr, incr+1)
+				self.grid.attach(label,6,7,incr, incr+1)
 					
 			if  'deg-trans' in S[key] and S[key]['deg-trans'] != lastEntry['deg-trans']:
 				label = Gtk.Label()
@@ -507,6 +512,11 @@ class SequencerWindow(Gtk.Window):
 	def do_save_bar(self):
 		box = Gtk.Box()
 		
+		self.saveBtn = Gtk.Button("Close")
+		self.saveBtn.connect("clicked", self.on_close_clicked)
+		box.pack_start(self.saveBtn, False, False, 0)
+		box.set_child_packing(self.saveBtn, False, True, 0, 1)
+		
 		self.delBtn = Gtk.Button("Delete")
 		self.delBtn.connect("clicked", self.on_del_clicked)
 		box.pack_start(self.delBtn, False, False, 0)
@@ -517,10 +527,9 @@ class SequencerWindow(Gtk.Window):
 		box.pack_start(self.saveBtn, False, False, 0)
 		box.set_child_packing(self.saveBtn, False, True, 0, 1)
 
-		name_store = Gtk.ListStore(str)
-		for key in sorted(self.sequences.iterkeys()):
-			name_store.append([key])
-		self.seqName = Gtk.ComboBox.new_with_model_and_entry(name_store)
+		self.seq_store = Gtk.ListStore(str)
+		self.build_seq_store()
+		self.seqName = Gtk.ComboBox.new_with_model_and_entry(self.seq_store)
 		self.seqName.connect("changed", self.load_saved_seq)
 		self.seqName.set_entry_text_column(0)
 
@@ -528,6 +537,15 @@ class SequencerWindow(Gtk.Window):
 		box.set_child_packing(self.seqName, False, True, 0, 1)
 				
 		self.vbox.add(box)
+		
+	def build_seq_store(self):
+		self.seq_store.clear()
+		for key in sorted(self.sequences.iterkeys()):
+			self.seq_store.append([key])
+	
+	def on_close_clicked(self, btn):
+		self.hide()
+		self.mainWin.show()
 		
 	def load_saved_seq(self, combo):
 		tree_iter = combo.get_active_iter()
@@ -543,8 +561,19 @@ class SequencerWindow(Gtk.Window):
 	
 	def on_save_clicked(self,btn):
 		nm = self.get_seq_entry_name()
+		if len(nm)<1:
+			self.notifier.set_markup('<span foreground="red">Please enter a sequence name before saving</span>')
+			return
+		if nm in self.sequences:
+			dialog = ConfirmSeqOverwrite(self, nm)
+			response = dialog.run()
+			if response == Gtk.ResponseType.CANCEL:
+				return
+			dialog.destroy()
 		self.sequences[nm] = self.unsaved
 		self.save_to_json()
+		self.build_seq_store()
+		self.notifier.set_markup('<span foreground="green">Sequence '+nm+' saved</span>')
 		
 	def save_to_json(self):
 		win = self.mainWin
@@ -567,11 +596,18 @@ class SequencerWindow(Gtk.Window):
 	
 	def on_del_clicked(self, btn):
 		nm = self.get_seq_entry_name()
-		self.sequences.pop(nm, None)
-		self.save_to_json()
-		self.unsaved = {}
-		self.set_default_first_row()
-		self.display_adjustments()
+		dialog = ConfirmSeqDelete(self, nm)
+		response = dialog.run()
+		if response == Gtk.ResponseType.OK:
+			self.sequences.pop(nm, None)
+			self.save_to_json()
+			self.unsaved = {}
+			self.set_default_first_row()
+			self.display_adjustments()
+			self.focus_row(1)
+			self.build_seq_store()
+			self.notifier.set_markup('<span foreground="green">Sequence '+nm+' deleted</span>')
+		dialog.destroy()
 
 class Sequencer():
 	
@@ -694,3 +730,35 @@ class Sequencer():
 				self.mainWin.degSpin.set_value(self.mainWin.sequence[i]['deg'])
 			if 'layer' in self.mainWin.sequence[i]:
 				self.mainWin.layer_combo.set_active(int(self.mainWin.sequence[i]['layer']))
+				
+				
+class ConfirmSeqDelete(Gtk.Dialog):
+
+	def __init__(self, parent, seqName):
+		Gtk.Dialog.__init__(self, "Delete sequence", parent, 0,
+			(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+			 Gtk.STOCK_OK, Gtk.ResponseType.OK))
+
+		self.set_default_size(150, 100)
+
+		label = Gtk.Label('Are you sure you want to completely delete the sequence named "'+seqName+'"? This action cannot be undone.')
+
+		box = self.get_content_area()
+		box.add(label)
+		self.show_all()
+		
+class ConfirmSeqOverwrite(Gtk.Dialog):
+
+	def __init__(self, parent, seqName):
+		Gtk.Dialog.__init__(self, "Delete sequence", parent, 0,
+			(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+			 Gtk.STOCK_OK, Gtk.ResponseType.OK))
+
+		self.set_default_size(150, 100)
+
+		label = Gtk.Label('Are you sure you want to overwrite the sequence named "'+seqName+'"? This action cannot be undone.')
+
+		box = self.get_content_area()
+		box.add(label)
+		self.show_all()
+	
