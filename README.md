@@ -1,3 +1,7 @@
+** This project has not been followed or maintained for a few years now, I simply leave the code here for archival purposes **
+-----------------------------------------------------------------------------------------------------------------------------
+
+
 # LucidGTK
 GTK application for running Google's DeepDream software on Linux systems
 
